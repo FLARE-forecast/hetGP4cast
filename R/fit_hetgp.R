@@ -1,26 +1,21 @@
-#' Title
+#' fit_hetgp
 #'
-#' @param X 
-#' @param Z
+#' @param X matrix of inputs
+#' @param Z vector of responses (temperatures)
 #'
-#' @return
+#' @return a hetGP model fit object
 #' @export
 #'
 #' @examples
 #'
-fit_hetgp = function(X, Z){
+fit_hetgp <- function(X, Y){
 
-  het_gp_fit = mleHetGP(X, Z, covtype =  "Gaussian")
-  het_gp_fit = rebuild(het_gp_fit, robust = TRUE)
+  het_gp_fit <- hetGP::mleHetGP(X, Y, covtype =  "Gaussian")
+  het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
 
-  return(df)
+  return(het_gp_fit)
 
 }
 
-predict_hetgp = function(Xnew, het_gp_fit){
-  Xnew = as.matrix(Xnew)
-  preds = predict(Xnew)
-  return(preds)
-}
 
 

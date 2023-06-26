@@ -2,12 +2,13 @@
 % Please edit documentation in R/fit_hetgp.R
 \name{fit_hetgp}
 \alias{fit_hetgp}
-\title{Title}
+\title{Fit heteroscedastic GP}
 \usage{
-fit_hetgp(df, reference_datetime, horizon)
+fit_hetgp(X, Z)
 }
 \arguments{
-\item{horizon}{}
+\item{X}{model matrix}
+\item{Z}{response}
 }
 \description{
 Title

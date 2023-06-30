@@ -174,13 +174,14 @@ fit_hetgp <- function(X, Y, site_id, df){
   # fit model
   # warn that this could take time
   print("fitting model. For large datasets (>10,000 rows), this could take some time!")
-  het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype =  "Gaussian")
+  print("passes")
+  #het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype =  "Gaussian")
   
-  het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
+  #het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
   
-  return(het_gp_fit)
   
-  return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
+  
+  #return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
   
 }
 
@@ -194,7 +195,7 @@ df$dummy=1
 head(df2)
 unique(df$site_id)
 df=df2
-fit_hetgp(X = "depth", Y = "temperature", site_id = "BAC", df = df2)
+fit_hetgp(X = "depth", Y = "temperature", site_id = c("BARC, TOMB"), df = df2)
 
   
   X = c("Depth", "DOY")

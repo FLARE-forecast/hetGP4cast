@@ -8,7 +8,10 @@
 #'
 #' @examples
 #'
-predict_hetgp <- function(Xnew, het_gp_fit){
+predict_hetgp <- function(het_gp_object, save_covmat = FALSE){
+  het_gp_fit = het_gp_object$het_gp_fit
+  Xmat = het_gp_fit$Xmat
+  df = het_gp_fit$df
   Xnew <- as.matrix(Xnew)
   preds <- predict(Xnew)
   return(preds)

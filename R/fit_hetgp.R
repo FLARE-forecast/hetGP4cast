@@ -11,7 +11,7 @@
 #' # put in a sample dataset and read it in here for the example
 #' test = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = exampleDF)
 #'
-fit_hetgp <- function(X, Y, site_id, df){
+fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   use_depth = FALSE
   # Only a df of standard format will be accepted. It must have correct variable names. If there are missing names
   # function will stop and state which ones are missing/extra. Not sure what to do about the depth column...since
@@ -147,9 +147,9 @@ fit_hetgp <- function(X, Y, site_id, df){
   
   # if more than one site_id are entered ask user if this is really what they want to do
   if (length(good_sites) > 1){
-    print("you selected multiple site_ids. This will pool data from multiple site_ids.
-            Do you wish to continue?
-            Press any key to continue or N to stop")
+    print("you selected multiple site_ids. This will pool data from multiple site_ids.")
+    print("Do you wish to continue?")
+    print("Press any key to continue or N to stop")
     user_input = readline()
     if (user_input == "N" || user_input == "n"){
       return("You have chosen to end the program and edit your input for site_id")
@@ -171,11 +171,16 @@ fit_hetgp <- function(X, Y, site_id, df){
   # get Y
   Y_resp = df$observation
   
+  
+  accepted_covtypes = c("Gaussian", "Matern5_2", "Matern3_2")
+  if (!(covtype %in% accepted_covtypes)){
+    stop("Invalid covtype. Accepted names are: ", paste(accepted_covtypes, collapse = ' '))
+  }
   # fit model
   # warn that this could take time
   print("fitting model. For large datasets (>10,000 rows), this could take some time!")
   print("passes")
-  #het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype =  "Gaussian")
+  #het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
   
   #het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
   
@@ -184,7 +189,8 @@ fit_hetgp <- function(X, Y, site_id, df){
   #return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
   
 }
-
+library(hetGP)
+?mleHetGP
 c("datetime", "site_id", "variable", "observation")
 df2 = df %>% dplyr::select(datetime, site_id, variable, prediction)
 df2$depth = 1
@@ -195,7 +201,7 @@ df$dummy=1
 head(df2)
 unique(df$site_id)
 df=df2
-fit_hetgp(X = "depth", Y = "temperature", site_id = c("BARC, TOMB"), df = df2)
+fit_hetgp(X = "depth", Y = "temperature", site_id = c("BARC", "TOMB"), df = df2)
 
   
   X = c("Depth", "DOY")

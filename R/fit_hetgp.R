@@ -179,16 +179,19 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   # fit model
   # warn that this could take time
   print("fitting model. For large datasets (>10,000 rows), this could take some time!")
-  print("passes")
-  #het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
+  #print("passes")
+  het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
   
-  #het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
+  het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
   
   
   
-  #return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
+  return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
   
 }
+
+
+# testing stuff 
 library(hetGP)
 ?mleHetGP
 c("datetime", "site_id", "variable", "observation")
@@ -201,11 +204,13 @@ df$dummy=1
 head(df2)
 unique(df$site_id)
 df=df2
-fit_hetgp(X = "depth", Y = "temperature", site_id = c("BARC", "TOMB"), df = df2)
+testobject = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = df2)
 
   
   X = c("Depth", "DOY")
 df = data.table::fread("aquatics-2023-03-20-xgboost_parallel.csv.gz")
+colnames(df)
+unique(df$parameter)
 df2 = filter(df, variable == "temperature")
 plot(df2$datetime, df2$prediction)
 stuff = readline()

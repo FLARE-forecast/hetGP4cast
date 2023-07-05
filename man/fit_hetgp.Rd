@@ -2,14 +2,30 @@
 % Please edit documentation in R/fit_hetgp.R
 \name{fit_hetgp}
 \alias{fit_hetgp}
-\title{Fit heteroscedastic GP}
+\title{Fit a heteroscedastic Gaussian process model}
 \usage{
-fit_hetgp(X, Z)
+fit_hetgp(X, Y, site_id, df, covtype = "Gaussian")
 }
 \arguments{
-\item{X}{model matrix}
-\item{Z}{response}
+\item{X}{X name(s) of covariates for model fitting (string);
+Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measurement)}
+
+\item{Y}{Y name of response (string); accepted values are one of unique(df$variable)}
+
+\item{site_id}{name of site}
+
+\item{df}{data.frame in standard format}
+
+\item{covtype}{type of covariance function to use; can be one of
+"Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()}
+}
+\value{
+a list containing the hetGP fit object, the inputs matrix, and
 }
 \description{
-Title
+Fit a heteroscedastic Gaussian process model
+}
+\examples{
+het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data,
+site_id = "BARC")
 }

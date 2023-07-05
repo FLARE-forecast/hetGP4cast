@@ -1,25 +1,52 @@
-#' fit_hetgp
+
+#' Fit a heteroscedastic Gaussian process model
 #'
-#' @param X matrix of inputs
-#' @param Z vector of responses (temperatures)
+#' @param X X name(s) of covariates for model fitting (string);
+#' Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measurement)
+#' @param Y Y name of response (string); accepted values are one of unique(df$variable)
+#' @param site_id name of site
+#' @param df data.frame in standard format
+#' @param covtype type of covariance function to use; can be one of
+#' "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()
 #'
-#' @return a list containing a hetGP model fit object, the original df, and the X matrix
-#' The list should be input to predict_hetgp()
+#' @return a list containing the hetGP fit object, the inputs matrix, and
 #' @export
 #'
-#' @examples
-#' # put in a sample dataset and read it in here for the example
-#' test = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = exampleDF)
-#'
+#' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data,
+#' site_id = "BARC")
 fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   use_depth = FALSE
+
+  # function for safely converting datetime to DOY
+  format_datetime_df <- function(df){
+    tryCatch(
+      expr = {
+        df$DOY = as.integer(format(df$datetime, "%j"))
+        message("Successfully executed the log(x) call.")
+        return(df)
+        #message("Successfully executed the log(x) call.")
+      },
+      error = function(e){
+        message('Cannot convert datetime variable into DOY. Please ensure datetime variable is formatted as yyyy-mm-dd')
+        print(e)
+      },
+      warning = function(w){
+        message('Cannot convert datetime variable into DOY. Please ensure datetime variable is formatted as yyyy-mm-dd')
+        print(w)
+      },
+      finally = {
+
+      }
+    )
+  }
+
   # Only a df of standard format will be accepted. It must have correct variable names. If there are missing names
   # function will stop and state which ones are missing/extra. Not sure what to do about the depth column...since
   # that is not a column in the 'standard' format
   # df_names = colnames(df)
   df_names = colnames(df)
- # df_names = c("datetime","x", "site_id","variable", "yY")
-  
+  # df_names = c("datetime","x", "site_id","variable", "yY")
+
   # but prediction would be replaced by something else?
   standard_names = c("datetime", "site_id", "variable", "observation")
   standard_names_depth = c("datetime", "site_id", "variable", "observation", "depth")
@@ -32,33 +59,33 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
       use_depth = TRUE
     }
   }else{
-    
-      missing_names = standard_names_depth[! (standard_names_depth %in% intersect(df_names, standard_names_depth))]
-      extra_names = df_names[!(df_names %in% (intersect(df_names, standard_names_depth)))]
-      
-      # missing and extra names
-      if (length(missing_names)){
-        if (length(missing_names)){
-          warning("You are missing the following column names in df (depth is optional): ",
-                  paste(missing_names, collapse = ' '))
-          warning("The following extra columns in df were detected: ", paste(extra_names, collapse = ' '))
-          stop("please ensure df is in the correct format before proceeding")
-        }
-      }
-      # missing colnames only
+
+    missing_names = standard_names_depth[! (standard_names_depth %in% intersect(df_names, standard_names_depth))]
+    extra_names = df_names[!(df_names %in% (intersect(df_names, standard_names_depth)))]
+
+    # missing and extra names
+    if (length(missing_names)){
       if (length(missing_names)){
         warning("You are missing the following column names in df (depth is optional): ",
                 paste(missing_names, collapse = ' '))
-        stop("please ensure df is in the correct format before proceeding")
-      }
-      # extra names only
-      if (length(extra_names)){
         warning("The following extra columns in df were detected: ", paste(extra_names, collapse = ' '))
         stop("please ensure df is in the correct format before proceeding")
       }
-    
+    }
+    # missing colnames only
+    if (length(missing_names)){
+      warning("You are missing the following column names in df (depth is optional): ",
+              paste(missing_names, collapse = ' '))
+      stop("please ensure df is in the correct format before proceeding")
+    }
+    # extra names only
+    if (length(extra_names)){
+      warning("The following extra columns in df were detected: ", paste(extra_names, collapse = ' '))
+      stop("please ensure df is in the correct format before proceeding")
+    }
 
-    
+
+
   }
   # check if names from X, Y are in standard names
   # Now df is in correct format
@@ -71,43 +98,43 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   if(length(Y)>1){
     stop("The response, Y, must be a string equal to one of the following : ", paste(accepted_Y, collapse = ' '))
   }
-  
+
   accepted_vars = unique(df$variable)
   #accepted_vars = c("temperature", "salt", "algae")
-  
-  
+
+
   if (!(Y %in% accepted_Y)){
     stop("The only supported names for the response variable, Y, are : ", paste(accepted_Y, collapse = ' '))
   }
-  
-  if (use_depth){  
-    print("use depth")
-  # check X's
-  # must be character
-  # be be Depth, DOY or c(Depth, DOY)
-  accepted_Xs = c("depth", "DOY")
-  
-  if (!is.character(X)){
-    stop("Inputs, X, must be strings. Accepted inputs are ", paste(accepted_Xs, collapse = ' '))
-  }
-  if (length(X) == length(accepted_Xs)){
-    if(anyNA(match(X, accepted_Xs))){
-      stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
-    }
-  }else{
-    # X is a different length than accepted Xs
-    # check if there is an extra / bad X name
-    if ( anyNA(match(X, accepted_Xs))){
-      stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
-    }else{
-      warning("both depth and DOY are present in df, but only one covariate was entered: ", X)
-    }
 
-  }# use_depth = FALSE
+  if (use_depth){
+    print("use depth")
+    # check X's
+    # must be character
+    # be be Depth, DOY or c(Depth, DOY)
+    accepted_Xs = c("depth", "DOY")
+
+    if (!is.character(X)){
+      stop("Inputs, X, must be strings. Accepted inputs are ", paste(accepted_Xs, collapse = ' '))
+    }
+    if (length(X) == length(accepted_Xs)){
+      if(anyNA(match(X, accepted_Xs))){
+        stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
+      }
+    }else{
+      # X is a different length than accepted Xs
+      # check if there is an extra / bad X name
+      if ( anyNA(match(X, accepted_Xs))){
+        stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
+      }else{
+        warning("both depth and DOY are present in df, but only one covariate was entered: ", X)
+      }
+
+    }# use_depth = FALSE
   }else{
-    print("do not use depth")
+    print("depth is not a covariate")
     accepted_Xs = c("DOY")
-    
+
     if (!is.character(X)){
       stop("Inputs, X, must be strings. Accepted inputs are ", paste(accepted_Xs, collapse = ' '))
     }
@@ -120,21 +147,21 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
         stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
       }
     }
-    
+
   }
-  # also check dates before converting to julian day
-  if (!is.Date(df$datetime)){
-    stop("datetime column is not a date format")
+  # check if datetime is Date or Posix class
+  if (!inherits(df$datetime, c("Date", "POSIXt"))){
+    stop("datetime variable must be a date object formatted as yyyy-mm-dd")
   }
 
   # check site_id
   accepted_sites = unique(df$site_id)
-  
+
   if (!is.character(site_id)){
     stop("site_id must be a string. Accepted site_ids are ", paste(accepted_sites, collapse = ' '))
   }
-  
-  
+
+
   good_sites = intersect(site_id, accepted_sites)
   if (!setequal(site_id, good_sites)){
     stop("incorrect value for site_id. Accepted site_ids are ", paste(accepted_sites, collapse = ' '))
@@ -143,8 +170,8 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   if (length(good_sites) == 0){
     stop("incorrect value for site_id. Accepted site_ids are ", paste(accepted_sites, collapse = ' '))
   }
-  
-  
+
+
   # if more than one site_id are entered ask user if this is really what they want to do
   if (length(good_sites) > 1){
     print("you selected multiple site_ids. This will pool data from multiple site_ids.")
@@ -155,23 +182,25 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
       return("You have chosen to end the program and edit your input for site_id")
     }
   }
-  
+
   # convert df to data.frame if it is not already one
   df = as.data.frame(df)
   df = df[(df$site_id == site_id) & (df$variable == Y), ]
-  
+
   # convert datetime to Julian Day--DOY,
-  df$DOY = as.integer(format(df$datetime, "%j"))
+  # if datetime cannot be converted, will throw error
+  df = format_datetime_df(df)
+  #df$DOY = as.integer(format(df$datetime, "%j"))
 
   # extract X's
   X_idx = which(colnames(df) == X)
-  
+
   Xmat = df[, X_idx]
-  
+
   # get Y
   Y_resp = df$observation
-  
-  
+
+
   accepted_covtypes = c("Gaussian", "Matern5_2", "Matern3_2")
   if (!(covtype %in% accepted_covtypes)){
     stop("Invalid covtype. Accepted names are: ", paste(accepted_covtypes, collapse = ' '))
@@ -181,41 +210,35 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   print("fitting model. For large datasets (>10,000 rows), this could take some time!")
   #print("passes")
   het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
-  
+
   het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
-  
-  
-  
+
+
+
   return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
-  
+
 }
+#getwd()
+#data("sample_lake_data")
+#head(sample_lake_data)
+#modfit = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = sample_lake_data)
 
+# table(df$DOY)
+# head(df)
+# df$dummy=1
+#
+# unique(df$site_id)
+# modfit=fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = df)
+# modfit$
+#
+# X = c("Depth", "DOY")
+# df = data.table::fread("aquatics-2023-03-20-xgboost_parallel.csv.gz")
+# df2 = filter(df, variable == "temperature")
+# plot(df2$datetime, df2$prediction)
+# stuff = readline()
+#
+# stuff = filter(df, site_id == "BARC")
+# table(stuff)
+#
+# unique(df$parameter)
 
-# testing stuff 
-library(hetGP)
-?mleHetGP
-c("datetime", "site_id", "variable", "observation")
-df2 = df %>% dplyr::select(datetime, site_id, variable, prediction)
-df2$depth = 1
-colnames(df2)[4] = "observation"
-table(df$DOY)
-head(df)
-df$dummy=1
-head(df2)
-unique(df$site_id)
-df=df2
-testobject = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = df2)
-
-  
-  X = c("Depth", "DOY")
-df = data.table::fread("aquatics-2023-03-20-xgboost_parallel.csv.gz")
-colnames(df)
-unique(df$parameter)
-df2 = filter(df, variable == "temperature")
-plot(df2$datetime, df2$prediction)
-stuff = readline()
-
-stuff = filter(df, site_id == "BARC")
-table(stuff$)
-
-unique(df$parameter)

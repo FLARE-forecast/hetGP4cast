@@ -22,7 +22,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
     tryCatch(
       expr = {
         df$DOY = as.integer(format(df$datetime, "%j"))
-        message("Successfully executed the log(x) call.")
+        message("Success")
         return(df)
         #message("Successfully executed the log(x) call.")
       },
@@ -218,11 +218,17 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
 
 }
+
 #getwd()
 #data("sample_lake_data")
 #head(sample_lake_data)
-#modfit = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = sample_lake_data)
+#str(sample_lake_data)
 
+#het_gp_object = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = sample_lake_data)
+
+
+#het_gp_object = modfit
+#head(het_gp_fit$df)
 # table(df$DOY)
 # head(df)
 # df$dummy=1
@@ -232,7 +238,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 # modfit$
 #
 # X = c("Depth", "DOY")
-# df = data.table::fread("aquatics-2023-03-20-xgboost_parallel.csv.gz")
+#df = data.table::fread("aquatics-2023-03-20-xgboost_parallel.csv.gz")
 # df2 = filter(df, variable == "temperature")
 # plot(df2$datetime, df2$prediction)
 # stuff = readline()
@@ -241,4 +247,4 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 # table(stuff)
 #
 # unique(df$parameter)
-
+#load_all()

@@ -12,7 +12,7 @@ predict_hetgp <- function(het_gp_object, save_covmat = FALSE){
   het_gp_fit = het_gp_object$het_gp_fit
   Xmat = het_gp_object$Xmat
   df = het_gp_object$df
-  Xnew <- as.matrix(Xmat)
+  Xnew <- matrix[1:366]
 
   if (save_covmat){
     preds <- predict(x = Xnew, xprime = Xnew, object = het_gp_fit)
@@ -21,26 +21,56 @@ predict_hetgp <- function(het_gp_object, save_covmat = FALSE){
     preds <- predict(x = Xnew, object = het_gp_fit)
     covmat = NULL
   }
+  pred_df = data.frame(Mean = preds$mean, sd = sqrt(preds$sd2 + preds$nugs), DOY = df$DOY)
+  pred_df = pred_df[!(duplicated(pred_df$DOY)), ]
 
-  Mean = preds$mean
-  sd_with_Nug = sqrt(preds$sd2 + preds$nugs)
-  family = "normal"
-  model_id = "hetGP"
-  reference_datetime = "NA"
+  # get df where preds are means
+  df2 = df[,  c("reference_datetime", "site_id" ,"variable")]
+  meandf = pred_df[, c("Mean", "DOY")]
+  dflist = list(length = 30)
+  for (i in 1:30){
+    tempdf = df2
+    tempdf$datetime = as.POSIXct( tempdf$reference_datetime ) + lubridate::days(i)
+    tempdf$horizon = i
+    print(tempdf)
+    dflist[[i]] = tempdf
+  }
 
-  meandf = df[, c("datetime", "site_id", "variable")]
-  sddf = meandf
+  resdf = data.table::rbindlist(dflist)
 
-  meandf$parameter = "mu"
-  meandf$prediction = Mean
+  resdf$DOY = as.integer(format(resdf$datetime, "%j"))
+  resdf2 = resdf[resdf$DOY %in% meandf$DOY, ]
+  resdf2 = merge(resdf2, meandf, by = "DOY")
+  resdf2$DOY = NULL
+  resdf2$horizon = NULL
+  resdf2$parameter = "mu"
+  resdf2$family = family
+  resdf2$model_id = model_id
+  final_mean_df = resdf2
+  colnames(final_mean_df)[7] = "prediction"
 
-  sddf$parameter = "sigma"
-  sddf$prediction = sd_with_Nug
+  # now do sd's
+  sddf = pred_df[, c("sd", "DOY")]
+  dflist = list(length = 30)
+  for (i in 1:30){
+    tempdf = df2
+    tempdf$datetime = as.POSIXct( tempdf$reference_datetime ) + lubridate::days(i)
+    dflist[[i]] = tempdf
+  }
 
-  df = rbind(meandf, sddf)
-  df$model_id = model_id
-  df$family = family
-  df$reference_datetime = reference_datetime
+  resdf = data.table::rbindlist(dflist)
+  head(resdf)
+  resdf$DOY = as.integer(format(resdf$datetime, "%j"))
+  resdf2 = resdf[resdf$DOY %in% meandf$DOY, ]
+  resdf2 = merge(resdf2, meandf, by = "DOY")
+  resdf2$DOY = NULL
+  resdf2$parameter = "sigma"
+  resdf2$family = family
+  resdf2$model_id = model_id
+  final_sd_df = resdf2
+  colnames(final_sd_df)[7] = "prediction"
 
-  return(list(pred_df = df, covmat = covmat))
+  finaldf = rbind(final_mean_df, final_sd_df)
+
+  return(list(pred_df = finaldf, covmat = covmat))
 }

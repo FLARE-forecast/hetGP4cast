@@ -27,11 +27,13 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
         #message("Successfully executed the log(x) call.")
       },
       error = function(e){
-        message('Cannot convert datetime variable into DOY. Please ensure datetime variable is formatted as yyyy-mm-dd')
+        message('Cannot convert datetime variable into DOY. Please ensure datetime variable is
+                formatted as yyyy-mm-dd')
         print(e)
       },
       warning = function(w){
-        message('Cannot convert datetime variable into DOY. Please ensure datetime variable is formatted as yyyy-mm-dd')
+        message('Cannot convert datetime variable into DOY. Please ensure datetime variable is
+                formatted as yyyy-mm-dd')
         print(w)
       },
       finally = {
@@ -151,7 +153,8 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   }
   # check if datetime is Date or Posix class
   if (!inherits(df$datetime, c("Date", "POSIXt"))){
-    stop("datetime variable must be a date object formatted as yyyy-mm-dd")
+    df$datetime = as.Date(df$datetime)
+    #stop("datetime variable must be of class Date OR POSIxt")
   }
 
   # check site_id
@@ -207,7 +210,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   }
   # fit model
   # warn that this could take time
-  print("fitting model. For large datasets (>10,000 rows), this could take some time!")
+  print("fitting model. For large datasets, this could take some time!")
   #print("passes")
   het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
 
@@ -224,8 +227,8 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 #head(sample_lake_data)
 #str(sample_lake_data)
 
-#het_gp_object = fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = sample_lake_data)
-
+het_gp_object = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
+#load_all()
 
 #het_gp_object = modfit
 #head(het_gp_fit$df)

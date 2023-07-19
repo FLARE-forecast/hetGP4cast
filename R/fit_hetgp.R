@@ -13,7 +13,7 @@
 #' @export
 #'
 #' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data1mdepth,
-#' site_id = "BARC")
+#' site_id = "BARC", covtype = "Gaussian")
 fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   use_depth = FALSE
 
@@ -196,9 +196,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   #df$DOY = as.integer(format(df$datetime, "%j"))
 
   # extract X's
-  X_idx = which(colnames(df) == X)
-
-  Xmat = df[, X_idx]
+  Xmat = as.matrix(df[, X])
 
   # get Y
   Y_resp = df$observation
@@ -211,14 +209,12 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   # fit model
   # warn that this could take time
   print("fitting model. For large datasets, this could take some time!")
-  #print("passes")
+
   het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
 
   het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
 
-
-
-  return(list(het_gp_fit = het_gp_fit, df = df, Xmat = Xmat))
+  return(list(het_gp_fit = het_gp_fit, df = df, include_depth = use_depth, variable = Y_resp))
 
 }
 
@@ -227,9 +223,21 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 #head(sample_lake_data)
 #str(sample_lake_data)
 head(sample_lake_data_1mdepth)
+head(sample_lake_data_withDepth)
+colnames(sample_lake_data_withDepth)[1] = "depth"
+sample_lake_data_withDepth$X = NULL
 sample_lake_data_1mdepth$X = NULL
-het_gp_object = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
-load_all()
+het_gp_object = fit_hetgp(X = c("DOY", "depth"), Y = "temperature", site_id = "FCR", df = df2)
+het_gp_object = het_gp_fit
+df = sample_lake_data_withDepth
+df2 = df
+head(df2)
+tail(df2)
+df2$datetime = as.Date(df2$datetime)
+df2 = filter(df2, datetime >= as.Date("2022-07-07"))
+df2 = filter(df2, depth %in% c(1,5,9))
+head(df2)
+#load_all()
 
 #het_gp_object = modfit
 #head(het_gp_fit$df)

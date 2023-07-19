@@ -6,15 +6,52 @@
 #' @return a data.frame in standard format
 #' @export
 #'
-#' @examples preds <- predict_hetgp(het_gp_object = het_object)
+#' @examples preds <- predict_hetgp(het_gp_object = het_object, reference_date = as.Date("2022-10-05"))
 #'
-predict_hetgp <- function(het_gp_object, save_covmat = FALSE){
+reference_date = as.Date("2022-09-13")
+predict_hetgp <- function(het_gp_object,
+                          save_covmat = FALSE,
+                          reference_date,
+                          depths = 1:10){
+
+  # check if reference date is in correct format
+  date_check = as.integer(grep("[0-9]{4}-[0-9]{2}-[0-9]{2}", reference_date, value=F))
+  x = integer(0)
+  if (identical(x, date_check)){
+    stop("invalid time format. Please enter date 'YYYY-MM-DD' ")
+  }
+
+  # convert to Date object
+  if (!inherits(reference_date, c("Date", "POSIXt"))){
+    reference_date = as.Date(reference_date)
+
+  }
+
+  # check if depths argument is correct (must be numeric and greater than 0)
+  if (setequal(1:10, depths)){
+    if (!is.numeric(depths)){
+      stop("depths must be a numeric vector >= 0")
+    }
+    if (sum(depths < 0) >= 1 ){
+      stop("depths must be >= 0")
+    }
+  }
+
   het_gp_fit = het_gp_object$het_gp_fit
-  Xmat = het_gp_object$Xmat
   df = het_gp_object$df
-  Xnew <- matrix(1:365)
+  include_depth = het_gp_object$include_depth
+  variable = het_gp_object$Y_resp
+
   model_id = "hetGP"
   family = "normal"
+  variable = "temperature"
+
+  date_times = reference_date + lubridate::days(1:35)
+  doys = as.integer(format(date_times, "%j"))
+
+  # DOY is only covariate
+  if (!include_depth){
+    Xnew <- matrix(1:365)
 
   if (save_covmat){
     preds <- predict(x = Xnew, xprime = Xnew, object = het_gp_fit)
@@ -23,69 +60,64 @@ predict_hetgp <- function(het_gp_object, save_covmat = FALSE){
     preds <- predict(x = Xnew, object = het_gp_fit)
     covmat = NULL
   }
+
   pred_df = data.frame(Mean = preds$mean, sd = sqrt(preds$sd2 + preds$nugs), DOY = 1:365)
 
+  mypreds = pred_df[pred_df$DOY %in% doys, ]
+  mean_preds = mypreds$Mean
+  sd_preds = mypreds$sd
 
-  # get df where preds are means
-  df2 = df[,  c("datetime", "site_id" ,"variable")]
-  colnames(df2)[1] = "reference_datetime"
-  meandf = pred_df[, c("Mean", "DOY")]
-  dflist = list(length = 30)
-  for (i in 1:30){
-    tempdf = df2
-    tempdf$datetime = as.POSIXct(tempdf$reference_datetime, tz = "GMT")
-    tempdf$datetime = tempdf$reference_datetime + lubridate::days(i)
-    tempdf$horizon = i
-    #print(tempdf)
-    dflist[[i]] = tempdf
-  }
+  final_mean_df = data.frame(reference_date = rep(reference_date, nrow(mypreds)), datetime = date_times,
+                             prediction = mean_preds, model_id = model_id, family = family,
+                             parameter = "mu", variable = variable)
 
-  resdf = data.table::rbindlist(dflist)
-  # convert datetime (date of forecast) to DOY
-  resdf$DOY = as.integer(format(resdf$datetime, "%j"))
+  final_sd_df = data.frame(reference_date = rep(reference_date, nrow(mypreds)), datetime = date_times,
+                             prediction = sd_preds, model_id = model_id, family = family,
+                             parameter = "sd", variable = variable)
 
-  resdf2 = merge(resdf, meandf, by = "DOY")
-  resdf2 = resdf2[complete.cases(resdf2), ]
-
-  # get rid of DOY/horizon, because they are not in the standard format
-  resdf2$DOY = NULL
-  resdf2$horizon = NULL
-
-  resdf2$parameter = "mu"
-  resdf2$family = family
-  resdf2$model_id = model_id
-  final_mean_df = resdf2
-  idx = which(colnames(final_mean_df) == "Mean")
-  colnames(final_mean_df)[idx] = "prediction"
-
-  # now do sd's
-  sddf = pred_df[, c("sd", "DOY")]
-  dflist = list(length = 30)
-  for (i in 1:30){
-    tempdf = df2
-    tempdf$datetime = as.POSIXct(tempdf$reference_datetime, tz = "GMT")
-    tempdf$datetime = tempdf$reference_datetime + lubridate::days(i)
-    tempdf$horizon = i
-    #print(tempdf)
-    dflist[[i]] = tempdf
-  }
-
-  resdf = data.table::rbindlist(dflist)
-
-  resdf$DOY = as.integer(format(resdf$datetime, "%j"))
-
-
-  resdf2 = merge(resdf, sddf, by = "DOY")
-  resdf2$DOY = NULL
-  resdf2$horizon = NULL
-
-  resdf2$parameter = "sigma"
-  resdf2$family = family
-  resdf2$model_id = model_id
-  final_sd_df = resdf2
-  idx = which(colnames(final_sd_df) == "sd")
-  colnames(final_sd_df)[idx] = "prediction"
   finaldf = rbind(final_mean_df, final_sd_df)
 
-  return(list(pred_df = finaldf, covmat = covmat))
+  return(list(pred_df = finaldf, covmat = covmat, df= df))
+
+  # DOY and depth are covariates
+  }else{
+    Xnew = data.frame(DOY=rep(1:365, length(depths)), depth = rep(depths, each = 365))
+    Xnew = as.matrix(Xnew)
+
+    if (save_covmat){
+      preds <- predict(x = Xnew, xprime = Xnew, object = het_gp_fit)
+      covmat = preds$cov
+    }else{
+      preds <- predict(x = Xnew, object = het_gp_fit)
+      covmat = NULL
+    }
+
+    pred_df = data.frame(Mean = preds$mean, sd = sqrt(preds$sd2 + preds$nugs),
+                         DOY=rep(1:365, length(depths)),
+                         depth = rep(depths, each = 365))
+
+
+    mypreds = pred_df[pred_df$DOY %in% doys, ]
+
+    dummydf = data.frame(DOY = doys, datetime = date_times)
+    mypreds = merge(mypreds, dummydf, by = "DOY")
+
+    mean_preds = mypreds$Mean
+    sd_preds = mypreds$sd
+
+    final_mean_df = data.frame(reference_date = reference_date, datetime = mypreds$datetime,
+                               prediction = mean_preds, model_id = model_id, family = family,
+                               parameter = "mu", variable = variable, depth = mypreds$depth)
+
+    final_sd_df = data.frame(reference_date = reference_date, datetime = mypreds$datetime,
+                             prediction = sd_preds, model_id = model_id, family = family,
+                             parameter = "sd", variable = variable, depth = mypreds$depth)
+
+    finaldf = rbind(final_mean_df, final_sd_df)
+
+    return(list(pred_df = finaldf, covmat = covmat, df = df))
+  }
 }
+
+preds = predict_hetgp(het_gp_object = het_gp_object, reference_date = "2022-09-01")
+

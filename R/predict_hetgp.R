@@ -85,8 +85,6 @@ predict_hetgp <- function(het_gp_object, save_covmat = FALSE){
   final_sd_df = resdf2
   idx = which(colnames(final_sd_df) == "sd")
   colnames(final_sd_df)[idx] = "prediction"
-  head(final_sd_df)
-  head(final_mean_df)
   finaldf = rbind(final_mean_df, final_sd_df)
 
   return(list(pred_df = finaldf, covmat = covmat))

@@ -12,7 +12,7 @@
 #' @return a list containing the hetGP fit object, the inputs matrix, and
 #' @export
 #'
-#' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data,
+#' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data1mdepth,
 #' site_id = "BARC")
 fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   use_depth = FALSE
@@ -226,9 +226,10 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 #data("sample_lake_data")
 #head(sample_lake_data)
 #str(sample_lake_data)
-
+head(sample_lake_data_1mdepth)
+sample_lake_data_1mdepth$X = NULL
 het_gp_object = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
-#load_all()
+load_all()
 
 #het_gp_object = modfit
 #head(het_gp_fit$df)

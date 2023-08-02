@@ -42,11 +42,14 @@ predict_hetgp <- function(het_gp_object,
   # DOY is only covariate
   if (!include_depth){
     Xnew <- matrix(1:365)
+    Xnew_doy = matrix(doys)
 
     # predict on all DOYs but below, only the relevant ones are extracted
   if (save_covmat){
-    preds <- predict(x = Xnew, xprime = Xnew, object = het_gp_fit)
-    covmat = preds$cov
+    preds <- predict(x = Xnew, object = het_gp_fit)
+
+    predscov = predict(x = Xnew_doy, xprime = Xnew_doy, object = het_gp_fit)
+    covmat = predscov$cov
   }else{
     preds <- predict(x = Xnew, object = het_gp_fit)
     covmat = NULL
@@ -82,12 +85,15 @@ predict_hetgp <- function(het_gp_object,
       }
     }
 
-    Xnew = data.frame(DOY=rep(1:365, length(depths)), depth = rep(depths, each = 365))
-    Xnew = as.matrix(Xnew)
+    Xnewdf = data.frame(DOY=rep(1:365, length(depths)), depth = rep(depths, each = 365))
+    Xnew = as.matrix(Xnewdf)
 
+    Xnew_doy = as.matrix(Xnewdf[Xnewdf$DOY %in% doys, ])
     if (save_covmat){
-      preds <- predict(x = Xnew, xprime = Xnew, object = het_gp_fit)
-      covmat = preds$cov
+      preds <- predict(x = Xnew, object = het_gp_fit)
+
+      predscov = predict(x = Xnew_doy, xprime = Xnew_doy, object = het_gp_fit)
+      covmat = predscov$cov
     }else{
       preds <- predict(x = Xnew, object = het_gp_fit)
       covmat = NULL
@@ -120,8 +126,8 @@ predict_hetgp <- function(het_gp_object,
     return(list(pred_df = finaldf, covmat = covmat, df = df))
   }
 }
-reference_date = as.Date("2022-09-13")
-preds = predict_hetgp(het_gp_object = het_gp_object2, reference_date = "2022-09-01", depths = 1:5)
-
-preds = predict_hetgp(het_gp_object = het_gp_object1, reference_date = "2023-09-01")
-head(preds$pred_df)
+# reference_date = as.Date("2022-09-13")
+# preds = predict_hetgp(het_gp_object = het_gp_object2, reference_date = "2022-09-01", depths = 1:5)
+#
+# preds = predict_hetgp(het_gp_object = het_gp_object1, reference_date = "2023-09-01")
+# head(preds$pred_df)

@@ -232,7 +232,9 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 # sample_lake_data_1mdepth$X = NULL
 
 # this will work --  no warnings/errors
-het_gp_object1 = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = df1)
+# sample_lake_data_withDepth
+# emove(sample_lake_date_withDepth)
+# het_gp_object1 = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = df1)
 
 # will give a warning for only one covariate entered but will still fit model
 #het_gp_object2 = fit_hetgp(X = c("DOY"), Y = "temperature", site_id = "FCR", df = df2)
@@ -241,37 +243,3 @@ het_gp_object1 = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = d
 #het_gp_object2 = fit_hetgp(X = c("DOY", "depth"), Y = "temperature", site_id = "FCR", df = df2[1:2000, ])
 
 
-
-
-# het_gp_object = het_gp_fit
-# df = sample_lake_data_withDepth
-# df2 = df
-# head(df2)
-# tail(df2)
-# df2$datetime = as.Date(df2$datetime)
-# df2 = filter(df2, datetime >= as.Date("2022-07-07"))
-# df2 = filter(df2, depth %in% c(1,5,9))
-# head(df2)
-#load_all()
-
-#het_gp_object = modfit
-#head(het_gp_fit$df)
-# table(df$DOY)
-# head(df)
-# df$dummy=1
-#
-# unique(df$site_id)
-# modfit=fit_hetgp(X = "DOY", Y = "temperature", site_id = "BARC", df = df)
-# modfit$
-#
-# X = c("Depth", "DOY")
-#df = data.table::fread("aquatics-2023-03-20-xgboost_parallel.csv.gz")
-# df2 = filter(df, variable == "temperature")
-# plot(df2$datetime, df2$prediction)
-# stuff = readline()
-#
-# stuff = filter(df, site_id == "BARC")
-# table(stuff)
-#
-# unique(df$parameter)
-#load_all()

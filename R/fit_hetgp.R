@@ -2,22 +2,25 @@
 #' Fit a heteroscedastic Gaussian process model
 #'
 #' @param X X name(s) of covariates for model fitting (string);
-#' Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measurement)
+#' Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measurement in m)
 #' @param Y Y name of response (string); accepted values are one of unique(df$variable)
 #' @param site_id name of site
-#' @param df data.frame in standard format
+#' @param df data.frame in standard format, see here: https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation
 #' @param covtype type of covariance function to use; can be one of
 #' "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()
 #'
-#' @return a list containing the hetGP fit object, the inputs matrix, and
+#' @return a list containing the hetGP fit object, the original df, a boolean to denote whether not depth was used as an input, and the vector of responses
 #' @export
 #'
-#' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data1mdepth,
-#' site_id = "BARC", covtype = "Gaussian")
+#' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data_1mdepth,
+#' site_id = "FCR", covtype = "Gaussian")
+#' het_object <- fit_hetgp(X = c("DOY", "depth"), Y = "temperature", df = sample_lake_data_withDepth,
+#' site_id = "FCR", covtype = "Gaussian")
 fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   use_depth = FALSE
 
   # function for safely converting datetime to DOY
+  # if date cannot be converted to julian day then it will throw sensible error
   format_datetime_df <- function(df){
     tryCatch(
       expr = {
@@ -86,8 +89,6 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
       stop("please ensure df is in the correct format before proceeding")
     }
 
-
-
   }
   # check if names from X, Y are in standard names
   # Now df is in correct format
@@ -130,12 +131,13 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
         stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
       }else{
         warning("both depth and DOY are present in df, but only one covariate was entered: ", X)
+        use_depth = FALSE
       }
 
     }# use_depth = FALSE
   }else{
     print("depth is not a covariate")
-    accepted_Xs = c("DOY")
+    accepted_Xs = "DOY"
 
     if (!is.character(X)){
       stop("Inputs, X, must be strings. Accepted inputs are ", paste(accepted_Xs, collapse = ' '))
@@ -145,7 +147,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
         stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
       }
     }else{
-      if ( is.na(match(X, accepted_Xs))){
+      if ( anyNA(match(X, accepted_Xs))){
         stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
       }
     }
@@ -218,25 +220,38 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 
 }
 
+
 #getwd()
 #data("sample_lake_data")
 #head(sample_lake_data)
 #str(sample_lake_data)
-head(sample_lake_data_1mdepth)
-head(sample_lake_data_withDepth)
-colnames(sample_lake_data_withDepth)[1] = "depth"
-sample_lake_data_withDepth$X = NULL
-sample_lake_data_1mdepth$X = NULL
-het_gp_object = fit_hetgp(X = c("DOY", "depth"), Y = "temperature", site_id = "FCR", df = df2)
-het_gp_object = het_gp_fit
-df = sample_lake_data_withDepth
-df2 = df
-head(df2)
-tail(df2)
-df2$datetime = as.Date(df2$datetime)
-df2 = filter(df2, datetime >= as.Date("2022-07-07"))
-df2 = filter(df2, depth %in% c(1,5,9))
-head(df2)
+# head(sample_lake_data_1mdepth)
+# head(sample_lake_data_withDepth)
+# colnames(sample_lake_data_withDepth)[1] = "depth"
+# sample_lake_data_withDepth$X = NULL
+# sample_lake_data_1mdepth$X = NULL
+
+# this will work --  no warnings/errors
+het_gp_object1 = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = df1)
+
+# will give a warning for only one covariate entered but will still fit model
+#het_gp_object2 = fit_hetgp(X = c("DOY"), Y = "temperature", site_id = "FCR", df = df2)
+
+# this works--no warning
+#het_gp_object2 = fit_hetgp(X = c("DOY", "depth"), Y = "temperature", site_id = "FCR", df = df2[1:2000, ])
+
+
+
+
+# het_gp_object = het_gp_fit
+# df = sample_lake_data_withDepth
+# df2 = df
+# head(df2)
+# tail(df2)
+# df2$datetime = as.Date(df2$datetime)
+# df2 = filter(df2, datetime >= as.Date("2022-07-07"))
+# df2 = filter(df2, depth %in% c(1,5,9))
+# head(df2)
 #load_all()
 
 #het_gp_object = modfit

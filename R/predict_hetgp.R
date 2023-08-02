@@ -2,13 +2,13 @@
 #'
 #' @param het_gp_fit a hetGP model fit object (from fit_hetgp())
 #' @param save_covmat boolean: should the predictive covariance matrix between prediction locations be saved?
-#'
-#' @return a data.frame in standard format
+#' @param reference_date character or Date, POSIXt class date formatted as YYYY-MM-DD
+#' @param depths depths at which predictions are desired (numeric vector >= 0)
+#' @return a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL), and the original input df
 #' @export
 #'
 #' @examples preds <- predict_hetgp(het_gp_object = het_object, reference_date = as.Date("2022-10-05"))
 #'
-reference_date = as.Date("2022-09-13")
 predict_hetgp <- function(het_gp_object,
                           save_covmat = FALSE,
                           reference_date,
@@ -27,20 +27,10 @@ predict_hetgp <- function(het_gp_object,
 
   }
 
-  # check if depths argument is correct (must be numeric and greater than 0)
-  if (setequal(1:10, depths)){
-    if (!is.numeric(depths)){
-      stop("depths must be a numeric vector >= 0")
-    }
-    if (sum(depths < 0) >= 1 ){
-      stop("depths must be >= 0")
-    }
-  }
-
   het_gp_fit = het_gp_object$het_gp_fit
   df = het_gp_object$df
   include_depth = het_gp_object$include_depth
-  variable = het_gp_object$Y_resp
+  Y_resp = het_gp_object$variable
 
   model_id = "hetGP"
   family = "normal"
@@ -53,6 +43,7 @@ predict_hetgp <- function(het_gp_object,
   if (!include_depth){
     Xnew <- matrix(1:365)
 
+    # predict on all DOYs but below, only the relevant ones are extracted
   if (save_covmat){
     preds <- predict(x = Xnew, xprime = Xnew, object = het_gp_fit)
     covmat = preds$cov
@@ -81,6 +72,16 @@ predict_hetgp <- function(het_gp_object,
 
   # DOY and depth are covariates
   }else{
+    # check if depths argument is correct (must be numeric and greater than 0)
+    if (!setequal(1:10, depths)){
+      if (!is.numeric(depths)){
+        stop("depths must be a numeric vector >= 0")
+      }
+      if (sum(depths < 0) >= 1 ){
+        stop("depths must be >= 0")
+      }
+    }
+
     Xnew = data.frame(DOY=rep(1:365, length(depths)), depth = rep(depths, each = 365))
     Xnew = as.matrix(Xnew)
 
@@ -115,9 +116,12 @@ predict_hetgp <- function(het_gp_object,
 
     finaldf = rbind(final_mean_df, final_sd_df)
 
+    df$DOY = NULL
     return(list(pred_df = finaldf, covmat = covmat, df = df))
   }
 }
+reference_date = as.Date("2022-09-13")
+preds = predict_hetgp(het_gp_object = het_gp_object2, reference_date = "2022-09-01", depths = 1:5)
 
-preds = predict_hetgp(het_gp_object = het_gp_object, reference_date = "2022-09-01")
-
+preds = predict_hetgp(het_gp_object = het_gp_object1, reference_date = "2023-09-01")
+head(preds$pred_df)

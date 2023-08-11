@@ -3,6 +3,7 @@ title: "Adventures in forecasting: fitting climatological models using heterosce
 author: "Maike Holthuijzen"
 date: "2023-08-09"
 output: pdf_document
+extra_dependencies: ["amssymb", "amsmath"]
 bibliography: references.bib  
 ---
 
@@ -84,6 +85,7 @@ To make forecasts, we need only to pass the return value of `fit_hetgp()` to `pr
 * `hetGP_fit:` hetGP object fit from `fit_hetgp()`
 * `save_covmat:` boolean, denotes whether the predictive covariance matrix should be saved (default is \texttt{FALSE})
 * `reference_datetime`: the reference date for which forecasts are desired. `reference_datetime` can be either a string or of class `Date` or `POSIXct` and must be formatted as `YYYY-MM-DD`.
+* `max_horizon`: the maximum forecast horizon in days (default is 35).
 * `depths`: Depths (m) for which forecasts are desired (if applicable, this option is ignored if depth is not a covariate). If `depth` was used as a covariate in the object produced from `fit_hetgp()`, the user may specify which depths to include in a forecast. Only numerical values greater than 0 are allowed for `depths` (default is `1:10`).
 * `PI`: value in [0,1) to denote value of prediction intervals. We recommend `PI` = 0.90 or 0.95 (default is 0.90).
 
@@ -92,7 +94,20 @@ To make forecasts, we need only to pass the return value of `fit_hetgp()` to `pr
 preds1 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01")
 ```
 
-Now, we can just plot the forecast and prediction intervals using `plot`. Notice both the predicted mean (forecast) and the prediction intervals are smooth.
+`predict_hetgp()` returns a list containing the following items:
+
+* `pred_df`: a `data.frame` in standard format containing `max-horizon`-day ahead forecasts for the desired `reference_datetime`
+* `covmat`: the predictive covariance matrix (if `save_covmat` = TRUE; otherwise `covmat` will be `NULL`
+* `df` the original input `data.frame` for `fit_hetgp()`
+* `preds4plotting`: a `data.frame` formatted for easy plotting; includes columns `Mean` (predictive mean), `sd` (standard deviation), `DOY`, `Lower` and `Upper` (lower and upper bounds for prediction intervals).
+* `include_depth`: boolean to denote whether or not `depth` was a model input
+* `Yname`: name of the response variable `Y`
+* `pred_width`: width of prediction intervals (value in `[0,1)`)
+
+list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
+                include_depth = include_depth, Yname = Yname, pred_width = pred_width)
+
+Now, we can quickly plot the forecast and prediction intervals using `plot`. (Custom plots can also be created--see Creating Custom Plots). Notice both the predicted mean (forecast) and the prediction intervals are smooth.
 ```{r}
 plot(predObject = preds1)
 ```
@@ -123,7 +138,7 @@ legend("topright", legend = c("Mean", "90% pred intervals"), lwd=2, lty = c(1,2)
 Clearly, smoothness is an issue, and uncertainty is not robustly quantified, as all SDs are weighted equally, regardless of the number of replicates for each DOY. 
 
 
-## Fitting depth and DOY models
+### Depth and DOY models
 Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).
 
 We can proceed exactly as before, but this time we include `depth` as a covariate. Note that including `depth` may result in a substantially longer computation time. We do not recommend fitting models to datasets of more than 5,000 observations. When the input `df` contains the extra column `depth`, the user may elect to only use only `DOY` as the covariate. However, we do not recommend doing so, as the model will pool observations from all depths.
@@ -146,5 +161,80 @@ modeld_preds = predict_hetgp(het_gp_object = model_depth, reference_date = "2023
 As before, the results can be plotted using `plot()`.
 ```{r}
 plot(predObject = modeld_preds)
+```
+
+## Creating custom plots
+We can quickly plot results by passing the object from `predict_hetgp()` to `plot`. However, users may also create custom plots. The `preds4plotting` `data.frame` can be used for plotting. Let's use the predictions from the DOY-only model fit.
+
+```{r}
+preds4plotting = preds1$preds4plotting
+head(preds4plotting)
+```
+
+
+```{r}
+library(ggplot2)
+ggplot(data = preds1$preds4plotting, aes(x = DOY, y = Mean, col = "Mean")) +
+  geom_line(linewidth = 1) +
+  geom_line(aes(x = DOY, y = Upper, col = "PI"), linetype = "dashed", linewidth = 1) +
+  geom_line(aes(x = DOY, y = Lower, col = "PI"), linetype = "dashed", linewidth = 1) +
+  theme_bw() +
+  ylab("Temperature") +
+  scale_color_manual(breaks = c("Mean", "PI"), 
+                     values = c(Mean = "#503A9B",
+                                PI = "#503A9B"),
+                     labels = c("Mean",  "90% PI"),  
+                     guide = guide_legend(override.aes = list(
+                       linetype = c("solid", "dashed"))),
+                     name="") +
+  theme(legend.position = c(0.11, 0.16), legend.text=element_text(size=14),
+        legend.background=element_rect(fill = alpha("white", 0.1)))
+```
+
+## Advanced 
+
+To construct realizations from the posterior predictive distribution, only the predictive mean and covariance matrix are necessary. Suppose we have some data $D$ composed of $(x,y)$ pairs, and we are interested in determining which function $f(x)$ generated the data $D$. If we assign a GP prior to $f$, we have $f \sim GP$. Given this setup, the posterior distribution $f(x)|D$ is generally of interest. Since we are usually interested in predictions at new values of $x$, $x*$, we usually want the posterior predictive distribution. Fortunately the posterior predictive distribution is also multivariate normal. That is, for several new $x$ locations $\mathcal{X}$ we are interested in $Y(\mathcal{X}) \mid D$: $Y(\mathcal{X}) \mid D \sim \mathcal{N}(\mu(\mathcal{X}), \Sigma(\mathcal{X}))$. Both $\mu(\mathcal{X})$ and $\Sigma(\mathcal{X})$ can be obtained from `predict_hetgp()`
+
+```{r}
+preds2 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01",
+                       save_covmat = TRUE)
+dim(preds2$covmat)
+```
+
+Now, to generate realizations, we can use the following function (alternatively, one could use the `mvtnorm` package.)
+```{r}
+# function to generate MVN realizations (using svd)
+rmultnorm <- function(n, mu, sigma){
+  # returns a n x length(mu) matrix
+  p <- length(mu)
+  z <- matrix(rnorm(n * p),nrow=n)
+  svdsig <- svd(sigma)
+  ch <- sqrt(diag(svdsig$d)) %*% t(svdsig$u)  
+  zz <- z %*% ch
+  zz + matrix(mu,nrow=n,ncol=p,byrow=T)
+}
+```
+
+The function `rmultnorm()` takes in `n`, the number of realizations, `mu`, a mean vector, and `sigma` a covariance matrix. 
+
+```{r}
+mu = preds2$preds4plotting$Mean
+length(mu)
+sigma = preds2$covmat
+dim(sigma)
+reals = rmultnorm(n = 200, mu = mu, sigma = sigma)
+matplot(t(reals), type= "l", col = "gray")
+```
+
+We can then extract means and quantiles and make a plot.
+```{r}
+mymean = apply(reals, 2, mean)
+Qupper = apply(reals, 2, function(x) quantile(x, probs = .95))
+QLower = apply(reals, 2, function(x) quantile(x, probs = .05))
+
+matplot(t(reals), type= "l", col = "gray", ylab = "Mean", xlab = "DOY")
+lines(mymean, type = "l")
+lines(Qupper, lty=2)
+lines(QLower, lty=2)
 ```
 

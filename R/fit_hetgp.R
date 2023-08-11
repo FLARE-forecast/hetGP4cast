@@ -16,7 +16,7 @@
 #' site_id = "FCR", covtype = "Gaussian")
 #' het_object <- fit_hetgp(X = c("DOY", "depth"), Y = "temperature", df = sample_lake_data_withDepth,
 #' site_id = "FCR", covtype = "Gaussian")
-fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
+fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
   use_depth = FALSE
 
   # function for safely converting datetime to DOY
@@ -111,7 +111,9 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   }
 
   if (use_depth){
-    print("use depth")
+    if (!silent){
+      print("use depth")
+    }
     # check X's
     # must be character
     # be be Depth, DOY or c(Depth, DOY)
@@ -136,7 +138,9 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
 
     }# use_depth = FALSE
   }else{
-    print("depth is not a covariate")
+    if (!silent){
+      print("depth is not a covariate")
+    }
     accepted_Xs = "DOY"
 
     if (!is.character(X)){
@@ -210,13 +214,24 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian"){
   }
   # fit model
   # warn that this could take time
-  print("fitting model. For large datasets, this could take some time!")
+  yname = Y
+
+  if(!silent){
+    print(paste("site_id is", site_id))
+    print("Y is, ", Yname)
+    print("fitting model. For large datasets, this could take some time!")
+  }
 
   het_gp_fit <- hetGP::mleHetGP(Xmat, Y_resp, covtype = covtype)
 
   het_gp_fit <- hetGP::rebuild(het_gp_fit, robust = TRUE)
 
-  return(list(het_gp_fit = het_gp_fit, df = df, include_depth = use_depth, variable = Y_resp))
+
+  return(list(het_gp_fit = het_gp_fit,
+              df = df,
+              include_depth = use_depth,
+              variable = Y_resp,
+              Yname = yname))
 
 }
 

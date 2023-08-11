@@ -26,6 +26,6 @@ a list containing the hetGP fit object, the inputs matrix, and
 Fit a heteroscedastic Gaussian process model
 }
 \examples{
-het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data,
-site_id = "BARC")
+het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data1mdepth,
+site_id = "BARC", covtype = "Gaussian")
 }

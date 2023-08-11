@@ -11,36 +11,47 @@
 #'
 predict_hetgp <- function(het_gp_object,
                           save_covmat = FALSE,
-                          reference_date,
-                          depths = 1:10){
+                          reference_datetime,
+                          depths = 1:10,
+                          PI = .90){
 
   # check if reference date is in correct format
-  date_check = as.integer(grep("[0-9]{4}-[0-9]{2}-[0-9]{2}", reference_date, value=F))
+  date_check = as.integer(grep("[0-9]{4}-[0-9]{2}-[0-9]{2}", reference_datetime, value=F))
   x = integer(0)
   if (identical(x, date_check)){
     stop("invalid time format. Please enter date 'YYYY-MM-DD' ")
   }
 
   # convert to Date object
-  if (!inherits(reference_date, c("Date", "POSIXt"))){
-    reference_date = as.Date(reference_date)
+  if (!inherits(reference_datetime, c("Date", "POSIXt"))){
+    reference_datetime = as.Date(reference_datetime)
 
   }
+
+  if ((PI < 0) || (PI >= 1) ){
+    stop("PI must be a value in [0,1)")
+  }
+
+  alpha1 = (1 - PI) / 2
+  alpha2 = 1 - alpha1
 
   het_gp_fit = het_gp_object$het_gp_fit
   df = het_gp_object$df
   include_depth = het_gp_object$include_depth
   Y_resp = het_gp_object$variable
+  Yname = het_gp_object$Yname
+  pred_width = PI
 
   model_id = "hetGP"
   family = "normal"
   variable = "temperature"
 
-  date_times = reference_date + lubridate::days(1:35)
+  date_times = reference_datetime + lubridate::days(1:35)
   doys = as.integer(format(date_times, "%j"))
 
   # DOY is only covariate
   if (!include_depth){
+    print("depth is not a covariate")
     Xnew <- matrix(1:365)
     Xnew_doy = matrix(doys)
 
@@ -61,18 +72,23 @@ predict_hetgp <- function(het_gp_object,
   mean_preds = mypreds$Mean
   sd_preds = mypreds$sd
 
-  final_mean_df = data.frame(reference_date = rep(reference_date, nrow(mypreds)), datetime = date_times,
+  final_mean_df = data.frame(reference_datetime = rep(reference_datetime, nrow(mypreds)), datetime = date_times,
                              prediction = mean_preds, model_id = model_id, family = family,
                              parameter = "mu", variable = variable)
 
-  final_sd_df = data.frame(reference_date = rep(reference_date, nrow(mypreds)), datetime = date_times,
+  final_sd_df = data.frame(reference_datetime = rep(reference_datetime, nrow(mypreds)), datetime = date_times,
                              prediction = sd_preds, model_id = model_id, family = family,
                              parameter = "sd", variable = variable)
 
   finaldf = rbind(final_mean_df, final_sd_df)
 
-  return(list(pred_df = finaldf, covmat = covmat, df= df))
 
+  mypreds$Lower <- qnorm(alpha1, mypreds$Mean, mypreds$sd)
+  mypreds$Upper <- qnorm(alpha2, mypreds$Mean, mypreds$sd)
+  mylist = list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
+                include_depth = include_depth, Yname = Yname, pred_width = pred_width)
+  class(mylist) = "hetGPpreds"
+  return(mylist)
   # DOY and depth are covariates
   }else{
     # check if depths argument is correct (must be numeric and greater than 0)
@@ -112,20 +128,75 @@ predict_hetgp <- function(het_gp_object,
     mean_preds = mypreds$Mean
     sd_preds = mypreds$sd
 
-    final_mean_df = data.frame(reference_date = reference_date, datetime = mypreds$datetime,
+    final_mean_df = data.frame(reference_datetime = reference_datetime, datetime = mypreds$datetime,
                                prediction = mean_preds, model_id = model_id, family = family,
                                parameter = "mu", variable = variable, depth = mypreds$depth)
 
-    final_sd_df = data.frame(reference_date = reference_date, datetime = mypreds$datetime,
+    final_sd_df = data.frame(reference_datetime = reference_datetime, datetime = mypreds$datetime,
                              prediction = sd_preds, model_id = model_id, family = family,
                              parameter = "sd", variable = variable, depth = mypreds$depth)
 
     finaldf = rbind(final_mean_df, final_sd_df)
 
     df$DOY = NULL
-    return(list(pred_df = finaldf, covmat = covmat, df = df))
+
+    mypreds$Lower = qnorm(alpha1, mypreds$Mean, mypreds$sd)
+    mypreds$Upper = qnorm(alpha2, mypreds$Mean, mypreds$sd)
+    mylist = list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
+                  include_depth = include_depth, Yname = Yname, pred_width = pred_width, depths = depths)
+    class(mylist) = "hetGPpreds"
+    return(mylist)
   }
 }
+
+#predObject = modeld
+
+plot.hetGPpreds = function(x=NULL, y=NULL, predObject, ...){
+  include_depth = predObject$include_depth
+
+  Yname = predObject$Yname
+  percent_width = predObject$pred_width * 100
+
+  if(!include_depth){
+    plotdf = predObject$preds4plotting
+    ymin = min(plotdf$Lower)
+    ymax = max(plotdf$Upper)
+    x = predObject$preds4plotting$DOY
+    plot(x, plotdf$Mean, xlab = "DOY",
+         ylab = Yname, type = "l", ylim = c(ymin, ymax))
+    lines(x, plotdf$Upper, lty = 2)
+    lines(x, plotdf$Lower, lty = 2)
+    legend("topright", legend = c(Yname, paste(percent_width, "%", "pred intervals")), lwd=2, lty = c(1,2))
+  }else{
+    plotdf = predObject$preds4plotting
+    ymin = min(plotdf$Lower)
+    ymax = max(plotdf$Upper)
+
+    depths = predObject$depths
+    depthL = length(depths)
+    numCols = ceiling(depthL / 2)
+    if (numCols == 1){
+      par(mfrow = c(1,2))
+    }else{
+      par(mfrow = c(2, numCols))
+    }
+    for (i in 1:length(depths)){
+      mydepth = depths[i]
+      temp = plotdf[plotdf$depth == mydepth, ]
+      x=temp$DOY
+      plot(x, temp$Mean, xlab = "DOY",
+           ylab = Yname, type = "l", ylim = c(ymin, ymax),
+           main = paste("Depth", mydepth))
+      lines(x, temp$Upper, lty = 2)
+      lines(x, temp$Lower, lty = 2)
+      if (i == 1){
+        legend("topright", legend = c(Yname, paste(percent_width, "%", "pred intervals")), lwd=2, lty = c(1,2))
+      }
+    }
+  }
+}
+
+
 # reference_date = as.Date("2022-09-13")
 # preds = predict_hetgp(het_gp_object = het_gp_object2, reference_date = "2022-09-01", depths = 1:5)
 #

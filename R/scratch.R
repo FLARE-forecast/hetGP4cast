@@ -53,67 +53,67 @@ df2$X=NULL
 head(df2)
 obs_data$datetime = NULL
 str(obs_data)
-#################################################################################################################
-sample_lake_data_1mdepth = read.csv("data/sample_lake_data_1mdepth.csv")
-sample_lake_data_1mdepth$X=NULL
-sample_lake_data_1mdepth$X.1=NULL
+filter(ogp, DOY == 250)
+test=readr::read_csv("https://data.ecoforecast.org/neon4cast-targets/aquatics/aquatics-targets.csv.gz")
+#head(test)
+#unique(test$variable)
+lakedat=readr::read_csv("https://data.ecoforecast.org/neon4cast-targets/aquatics/aquatics-expanded-observations.csv.gz")
+lakedat = lakedat[complete.cases(lakedat), ]
 
-head(sample_lake_data_1mdepth)
+test_UTC_split = strsplit(as.character(lakedat$datetime), " ")
+
+UTC_df = as.data.frame(do.call("rbind", test_UTC_split))
+names(UTC_df) = c("Date", "Time")
+idx = which(UTC_df$Time == "00:00:00")
+lakedat = lakedat[idx, ]
+
+lakedat1$depth = NULL
+lakedat1 = lakedat1[complete.cases(lakedat1), ]
+remove(x)
+
+temp = lakedat1
+temp$DOY = as.integer(format(lakedat1$datetime, "%j"))
+aves1 = temp %>% group_by(DOY) %>% summarise(meantemp = mean(observation, na.rm=TRUE), mysd = sd(observation))
+head(aves1)
+temp = lakedat1[lakedat1$site_id == "SUGG", ]
+temp$DOY = as.integer(format(temp$datetime, "%j"))
+avesdf = aggregate(observation ~ DOY, data = temp,
+                   FUN = function(x){
+                     Mean=mean(x, na.rm = TRUE)
+                     SD = sd(x)
+                     return(c(Mean, SD))
+                   }
+)
+
+avesdf <- do.call("data.frame", avesdf)
+colnames(avesdf) = c("DOY", "Mean", "SD")
+avesdf = avesdf[avesdf$DOY %in% 245:280, ]
+# get 90% prediction intervals
+avesdf$Upper = avesdf$Mean + 1.645*avesdf$SD
+avesdf$Lower = avesdf$Mean - 1.645*avesdf$SD
+plot(avesdf$DOY, avesdf$Mean, type = "l", ylab = "Mean", ylim = c(22, 32))
+lines(avesdf$DOY, avesdf$Upper, lty = 2)
+lines(avesdf$DOY, avesdf$Lower, lty = 2)
+
+#################################################################################################################
 
 # use only DOY as covariate
+str(lakedat1)
+library(hetGP)
+
 model1 = fit_hetgp(X = "DOY", Y = "temperature",
-                   site_id = "FCR", df = sample_lake_data_1mdepth)
-# won't work
-fit_hetgp(X = "DOY", Y = "blach",
-          site_id = "FCR", df = sample_lake_data_1mdepth)
-
-fit_hetgp(X = "D", Y = "temperature",
-          site_id = "FCR", df = sample_lake_data_1mdepth)
-
-fit_hetgp(X = "DOY", Y = "temperature",
-          site_id = "F", df = sample_lake_data_1mdepth)
+                   site_id = "SUGG", df = lakedat1)
 
 # works
 # do not save covmat
-preds1 = predict_hetgp(het_gp_object = model1, reference_date = "2023-09-01")
-head(preds1$pred_df)
+preds1 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01")
 
 preds2 = predict_hetgp(het_gp_object = model1, reference_date = "2023-09-01", save_covmat = TRUE)
-preds2$covmat[1:10,1:10]
-meandf = preds2$pred_df
-meandf = meandf[meandf$parameter == "mu", ]
-plot(meandf$datetime, meandf$prediction, type = "l")
 
-# does not work
-preds = predict_hetgp(het_gp_object = model1, reference_date = "2023-9-1")
-
-
-# DOY / Depth
-df2 = read.csv("data/withDepth.csv")
-df2$X=NULL
+lakedat2 = filter(lakedat, depth %in% 1:2)
+lakedat2 = lakedat2[complete.cases(lakedat2), ]
 # don't run it will take like an hour
 modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature",
-                   site_id = "FCR", df = df2)
+                   site_id = "BARC", df = lakedat2)
 
-# warning
-temp=fit_hetgp(X = c("DOY"), Y = "temperature",
-          site_id = "FCR", df = df2)
-
-# won't work
-fit_hetgp(X = c("DOY","d"), Y = "temperature",
-          site_id = "FCR", df = df2)
-
-# will work
-predict_hetgp(modeld,
-              reference_date = "2023-09-01",
-              depths = 1:10) # depths 1-10 are default
-
-predict_hetgp(modeld,
-              reference_date = "2023-09-01",
-              depths = c(1,3,5)) # use whatever depths you want
-
-# won't work
-predict_hetgp(modeld,
-              reference_date = "2023-09-01",
-              depths = c(-1, -2))
 

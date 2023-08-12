@@ -9,7 +9,8 @@
 #' @param covtype type of covariance function to use; can be one of
 #' "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()
 #'
-#' @return a list containing the hetGP fit object, the original df, a boolean to denote whether not depth was used as an input, and the vector of responses
+#' @return a list containing the hetGP fit object, the original df,
+#' a boolean to denote whether not depth was used as an input, the vector of observations, and the name of the response variable
 #' @export
 #'
 #' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data_1mdepth,

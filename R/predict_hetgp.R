@@ -2,16 +2,21 @@
 #'
 #' @param het_gp_fit a hetGP model fit object (from fit_hetgp())
 #' @param save_covmat boolean: should the predictive covariance matrix between prediction locations be saved?
-#' @param reference_date character or Date, POSIXt class date formatted as YYYY-MM-DD
-#' @param depths depths at which predictions are desired (numeric vector >= 0)
-#' @return a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL), and the original input df
+#' @param reference_datetime character or Date, POSIXt class date formatted as YYYY-MM-DD
+#' @param max_horizon forecast horizon in days (default is 35)
+#' @param depths depths at which predictions are desired (numeric vector >= 0) (default is 1:10)
+#' @param {PI} prediction interval coverage (numeric between 0 and 1) (default is 1:10)
+#' @return a list containing a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
+#' the original df used for fitting, a data.frame containing the mean, sd and upper/lower bounds (easier for plotting);
+#' a boolean value denoting whether depth was a covariate, and the name of the response variable
 #' @export
 #'
-#' @examples preds <- predict_hetgp(het_gp_object = het_object, reference_date = as.Date("2022-10-05"))
+#' @examples preds <- predict_hetgp(het_gp_object = het_object, reference_datetime = as.Date("2022-10-05"))
 #'
 predict_hetgp <- function(het_gp_object,
                           save_covmat = FALSE,
                           reference_datetime,
+                          max_horizon = 35,
                           depths = 1:10,
                           PI = .90){
 
@@ -46,7 +51,7 @@ predict_hetgp <- function(het_gp_object,
   family = "normal"
   variable = "temperature"
 
-  date_times = reference_datetime + lubridate::days(1:35)
+  date_times = reference_datetime + lubridate::days(1:max_horizon)
   doys = as.integer(format(date_times, "%j"))
 
   # DOY is only covariate
@@ -149,7 +154,6 @@ predict_hetgp <- function(het_gp_object,
   }
 }
 
-#predObject = modeld
 
 plot.hetGPpreds = function(x=NULL, y=NULL, predObject, ...){
   include_depth = predObject$include_depth

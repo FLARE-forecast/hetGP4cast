@@ -4,7 +4,7 @@
 \alias{fit_hetgp}
 \title{Fit a heteroscedastic Gaussian process model}
 \usage{
-fit_hetgp(X, Y, site_id, df, covtype = "Gaussian")
+fit_hetgp(X, Y, site_id, df, covtype = "Gaussian", silent=TRUE)
 }
 \arguments{
 \item{X}{X name(s) of covariates for model fitting (string);
@@ -18,9 +18,10 @@ Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measu
 
 \item{covtype}{type of covariance function to use; can be one of
 "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()}
+\item{silent}{if TRUE extra output will be printed to the console}
 }
 \value{
-a list containing the hetGP fit object, the inputs matrix, and
+a list containing the hetGP fit object; the original df; use_depth, a boolean to denote whether not depth was used as an input; the vector of observations; and the name of the response variable
 }
 \description{
 Fit a heteroscedastic Gaussian process model

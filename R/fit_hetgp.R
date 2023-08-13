@@ -8,15 +8,15 @@
 #' @param df data.frame in standard format, see here: https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation
 #' @param covtype type of covariance function to use; can be one of
 #' "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()
+#' @param silent if TRUE, more output will be printed to the console
 #'
 #' @return a list containing the hetGP fit object, the original df,
 #' a boolean to denote whether not depth was used as an input, the vector of observations, and the name of the response variable
 #' @export
 #'
-#' @examples het_object <- fit_hetgp(X = "DOY", Y = "temperature", df = sample_lake_data_1mdepth,
-#' site_id = "FCR", covtype = "Gaussian")
-#' het_object <- fit_hetgp(X = c("DOY", "depth"), Y = "temperature", df = sample_lake_data_withDepth,
-#' site_id = "FCR", covtype = "Gaussian")
+#' @examples data(sample_lake_data_1mdepth)
+#' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
+#' @references Binois, Mickaël, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
 fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
   use_depth = FALSE
 
@@ -235,27 +235,3 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
               Yname = yname))
 
 }
-
-
-#getwd()
-#data("sample_lake_data")
-#head(sample_lake_data)
-#str(sample_lake_data)
-# head(sample_lake_data_1mdepth)
-# head(sample_lake_data_withDepth)
-# colnames(sample_lake_data_withDepth)[1] = "depth"
-# sample_lake_data_withDepth$X = NULL
-# sample_lake_data_1mdepth$X = NULL
-
-# this will work --  no warnings/errors
-# sample_lake_data_withDepth
-# emove(sample_lake_date_withDepth)
-# het_gp_object1 = fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = df1)
-
-# will give a warning for only one covariate entered but will still fit model
-#het_gp_object2 = fit_hetgp(X = c("DOY"), Y = "temperature", site_id = "FCR", df = df2)
-
-# this works--no warning
-#het_gp_object2 = fit_hetgp(X = c("DOY", "depth"), Y = "temperature", site_id = "FCR", df = df2[1:2000, ])
-
-

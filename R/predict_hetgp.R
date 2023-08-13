@@ -1,18 +1,22 @@
-#' predict_hetgp
+#' Obtain posterior predictive distribution from a heteroscedastic Gaussian process model fit
 #'
 #' @param het_gp_fit a hetGP model fit object (from fit_hetgp())
 #' @param save_covmat boolean: should the predictive covariance matrix between prediction locations be saved?
 #' @param reference_datetime character or Date, POSIXt class date formatted as YYYY-MM-DD
 #' @param max_horizon forecast horizon in days (default is 35)
 #' @param depths depths at which predictions are desired (numeric vector >= 0) (default is 1:10)
-#' @param {PI} prediction interval coverage (numeric between 0 and 1) (default is 1:10)
+#' @param PI prediction interval coverage (numeric between 0 and 1) (default is 1:10)
 #' @return a list containing a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
 #' the original df used for fitting, a data.frame containing the mean, sd and upper/lower bounds (easier for plotting);
 #' a boolean value denoting whether depth was a covariate, and the name of the response variable
 #' @export
 #'
-#' @examples preds <- predict_hetgp(het_gp_object = het_object, reference_datetime = as.Date("2022-10-05"))
-#'
+#' @examples
+#' data(sample_lake_data_1mdepth)
+#' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
+#' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
+#' @references
+#' Binois, Mickaël, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
 predict_hetgp <- function(het_gp_object,
                           save_covmat = FALSE,
                           reference_datetime,
@@ -61,40 +65,40 @@ predict_hetgp <- function(het_gp_object,
     Xnew_doy = matrix(doys)
 
     # predict on all DOYs but below, only the relevant ones are extracted
-  if (save_covmat){
-    preds <- predict(x = Xnew, object = het_gp_fit)
+    if (save_covmat){
+      preds <- predict(x = Xnew, object = het_gp_fit)
 
-    predscov = predict(x = Xnew_doy, xprime = Xnew_doy, object = het_gp_fit)
-    covmat = predscov$cov
-  }else{
-    preds <- predict(x = Xnew, object = het_gp_fit)
-    covmat = NULL
-  }
+      predscov = predict(x = Xnew_doy, xprime = Xnew_doy, object = het_gp_fit)
+      covmat = predscov$cov
+    }else{
+      preds <- predict(x = Xnew, object = het_gp_fit)
+      covmat = NULL
+    }
 
-  pred_df = data.frame(Mean = preds$mean, sd = sqrt(preds$sd2 + preds$nugs), DOY = 1:365)
+    pred_df = data.frame(Mean = preds$mean, sd = sqrt(preds$sd2 + preds$nugs), DOY = 1:365)
 
-  mypreds = pred_df[pred_df$DOY %in% doys, ]
-  mean_preds = mypreds$Mean
-  sd_preds = mypreds$sd
+    mypreds = pred_df[pred_df$DOY %in% doys, ]
+    mean_preds = mypreds$Mean
+    sd_preds = mypreds$sd
 
-  final_mean_df = data.frame(reference_datetime = rep(reference_datetime, nrow(mypreds)), datetime = date_times,
-                             prediction = mean_preds, model_id = model_id, family = family,
-                             parameter = "mu", variable = variable)
+    final_mean_df = data.frame(reference_datetime = rep(reference_datetime, nrow(mypreds)), datetime = date_times,
+                               prediction = mean_preds, model_id = model_id, family = family,
+                               parameter = "mu", variable = variable)
 
-  final_sd_df = data.frame(reference_datetime = rep(reference_datetime, nrow(mypreds)), datetime = date_times,
+    final_sd_df = data.frame(reference_datetime = rep(reference_datetime, nrow(mypreds)), datetime = date_times,
                              prediction = sd_preds, model_id = model_id, family = family,
                              parameter = "sd", variable = variable)
 
-  finaldf = rbind(final_mean_df, final_sd_df)
+    finaldf = rbind(final_mean_df, final_sd_df)
 
 
-  mypreds$Lower <- qnorm(alpha1, mypreds$Mean, mypreds$sd)
-  mypreds$Upper <- qnorm(alpha2, mypreds$Mean, mypreds$sd)
-  mylist = list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
-                include_depth = include_depth, Yname = Yname, pred_width = pred_width)
-  class(mylist) = "hetGPpreds"
-  return(mylist)
-  # DOY and depth are covariates
+    mypreds$Lower <- qnorm(alpha1, mypreds$Mean, mypreds$sd)
+    mypreds$Upper <- qnorm(alpha2, mypreds$Mean, mypreds$sd)
+    mylist = list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
+                  include_depth = include_depth, Yname = Yname, pred_width = pred_width)
+    class(mylist) = "hetGPpreds"
+    return(mylist)
+    # DOY and depth are covariates
   }else{
     # check if depths argument is correct (must be numeric and greater than 0)
     if (!setequal(1:10, depths)){
@@ -154,7 +158,18 @@ predict_hetgp <- function(het_gp_object,
   }
 }
 
-
+#' Plot predictive mean and prediction intervals of a forecast
+#'
+#' @param predObject an object of class "hetGPpreds"
+#' @return it makes a plot
+#' @export
+#'
+#' @examples
+#' data(sample_lake_data_1mdepth)
+#' mod1 =  fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
+#' preds = predict_hetgp(het_gp_object = mod1, reference_datetime = "2023-09-01")
+#' plot(predObject=preds)
+#'
 plot.hetGPpreds = function(x=NULL, y=NULL, predObject, ...){
   include_depth = predObject$include_depth
 
@@ -199,10 +214,3 @@ plot.hetGPpreds = function(x=NULL, y=NULL, predObject, ...){
     }
   }
 }
-
-
-# reference_date = as.Date("2022-09-13")
-# preds = predict_hetgp(het_gp_object = het_gp_object2, reference_date = "2022-09-01", depths = 1:5)
-#
-# preds = predict_hetgp(het_gp_object = het_gp_object1, reference_date = "2023-09-01")
-# head(preds$pred_df)

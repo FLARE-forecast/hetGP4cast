@@ -1,22 +1,22 @@
 #' Obtain posterior predictive distribution from a heteroscedastic Gaussian process model fit
 #'
-#' @param het_gp_fit a hetGP model fit object (from fit_hetgp())
+#' @param het_gp_object a hetGP model fit object (from fit_hetgp())
 #' @param save_covmat boolean: should the predictive covariance matrix between prediction locations be saved?
 #' @param reference_datetime character or Date, POSIXt class date formatted as YYYY-MM-DD
 #' @param max_horizon forecast horizon in days (default is 35)
 #' @param depths depths at which predictions are desired (numeric vector >= 0) (default is 1:10)
 #' @param PI prediction interval coverage (numeric between 0 and 1) (default is 1:10)
 #' @return a list containing a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
-#' the original df used for fitting, a data.frame containing the mean, sd and upper/lower bounds (easier for plotting);
+#' the original df used for fitting, a data.frame containing the mean, sd and upper and lower bounds (easier for plotting);
 #' a boolean value denoting whether depth was a covariate, and the name of the response variable
 #' @export
 #'
 #' @examples
 #' data(sample_lake_data_1mdepth)
-#' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
+#' mod1 = fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 #' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
 #' @references
-#' Binois, Mickaël, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
+#' Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
 predict_hetgp <- function(het_gp_object,
                           save_covmat = FALSE,
                           reference_datetime,
@@ -168,9 +168,9 @@ predict_hetgp <- function(het_gp_object,
 #' data(sample_lake_data_1mdepth)
 #' mod1 =  fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
 #' preds = predict_hetgp(het_gp_object = mod1, reference_datetime = "2023-09-01")
-#' plot(predObject=preds)
+#' plot_hetGPpreds(predObject=preds)
 #'
-plot.hetGPpreds = function(x=NULL, y=NULL, predObject, ...){
+plot_hetGPpreds = function(predObject){
   include_depth = predObject$include_depth
 
   Yname = predObject$Yname

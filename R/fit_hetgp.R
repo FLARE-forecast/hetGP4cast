@@ -5,7 +5,7 @@
 #' Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measurement in m)
 #' @param Y Y name of response (string); accepted values are one of unique(df$variable)
 #' @param site_id name of site
-#' @param df data.frame in standard format, see here: https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation
+#' @param df data.frame in standard format, see \href{here}{https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation}
 #' @param covtype type of covariance function to use; can be one of
 #' "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()
 #' @param silent if TRUE, more output will be printed to the console
@@ -16,7 +16,7 @@
 #'
 #' @examples data(sample_lake_data_1mdepth)
 #' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
-#' @references Binois, Mickaël, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
+#' @references Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
 fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
   use_depth = FALSE
 

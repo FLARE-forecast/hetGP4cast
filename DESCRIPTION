@@ -7,6 +7,7 @@ Authors@R: c(person("Maike", "Holthuijzen", role = c("aut", "cre"),
 Author: Maike Holthuijzen [aut, cre],
 Maintainer: Maike Holthuijzen <mholthuijzen@alumni.uidaho.edu>
 Description: This package fits a climatological model via a heteroscedastic Gaussian process model,specifically for use in the NEON forecasting challenge.
+Depends: R (>= 2.10)
 License: CC BY 4.0
 Encoding: UTF-8
 LazyData: true
@@ -14,3 +15,4 @@ RoxygenNote: 7.2.3
 Imports: lubridate, hetGP
 Suggests: testthat (>= 3.0.0)
 Config/testthat/edition: 3
+

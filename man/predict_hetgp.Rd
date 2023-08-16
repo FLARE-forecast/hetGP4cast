@@ -14,6 +14,8 @@ predict_hetgp(
 )
 }
 \arguments{
+\item{het_gp_object}{a hetGP model fit object (from fit_hetgp())}
+
 \item{save_covmat}{boolean: should the predictive covariance matrix between prediction locations be saved?}
 
 \item{reference_datetime}{character or Date, POSIXt class date formatted as YYYY-MM-DD}
@@ -23,12 +25,10 @@ predict_hetgp(
 \item{depths}{depths at which predictions are desired (numeric vector >= 0) (default is 1:10)}
 
 \item{PI}{prediction interval coverage (numeric between 0 and 1) (default is 1:10)}
-
-\item{het_gp_fit}{a hetGP model fit object (from fit_hetgp())}
 }
 \value{
 a list containing a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
-the original df used for fitting, a data.frame containing the mean, sd and upper/lower bounds (easier for plotting);
+the original df used for fitting, a data.frame containing the mean, sd and upper and lower bounds (easier for plotting);
 a boolean value denoting whether depth was a covariate, and the name of the response variable
 }
 \description{
@@ -36,9 +36,9 @@ Obtain posterior predictive distribution from a heteroscedastic Gaussian process
 }
 \examples{
 data(sample_lake_data_1mdepth)
-mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
+mod1 = fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
 }
 \references{
-Binois, Mickaël, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
+Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
 }

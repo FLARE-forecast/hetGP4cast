@@ -14,7 +14,7 @@ Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measu
 
 \item{site_id}{name of site}
 
-\item{df}{data.frame in standard format, see here: https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation}
+\item{df}{data.frame in standard format, see \href{here}{https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation}}
 
 \item{covtype}{type of covariance function to use; can be one of
 "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()}
@@ -33,5 +33,5 @@ data(sample_lake_data_1mdepth)
 mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 }
 \references{
-Binois, Mickaël, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
+Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
 }

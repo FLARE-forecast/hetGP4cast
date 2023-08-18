@@ -15,6 +15,12 @@
 #' data(sample_lake_data_1mdepth)
 #' mod1 = fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 #' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
+#'
+#' data(lake_data_depth)
+#' modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature", site_id = "BARC", df = lake_data_depth)
+#' modeld_preds = predict_hetgp(het_gp_object = modeld, reference_date = "2023-09-01", depths = 1:2)
+#' plot_hetGPpreds(predObject = modeld_preds)
+#'
 #' @references
 #' Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
 predict_hetgp <- function(het_gp_object,

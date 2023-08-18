@@ -31,6 +31,9 @@ Fit a heteroscedastic Gaussian process model
 \examples{
 data(sample_lake_data_1mdepth)
 mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
+
+data(lake_data_depth)
+modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature", site_id = "BARC", df = lake_data_depth)
 }
 \references{
 Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)

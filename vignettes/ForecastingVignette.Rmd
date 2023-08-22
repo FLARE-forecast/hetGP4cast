@@ -11,15 +11,16 @@ bibliography: references.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r eval=FALSE}
-devtools::install_github("linktogitrepo")
+```{r }
+#require(hetGP4cast)
+devtools::install_github("maikeh7/hetGP4cast")
 ```
 
 
 
 ```{r include=FALSE}
-source("C:/Users/Maike/Box Sync/DEEP_LEARNING/SurrogateModeling/Important_code/TEST/R/fit_hetgp.R")
-source("C:/Users/Maike/Box Sync/DEEP_LEARNING/SurrogateModeling/Important_code/TEST/R/predict_hetgp.R")
+#source("C:/Users/Maike/Box Sync/DEEP_LEARNING/SurrogateModeling/Important_code/hetGP4cast/R/fit_hetgp.R")
+#source("C:/Users/Maike/Box Sync/DEEP_LEARNING/SurrogateModeling/Important_code/hetGP4cast/R/predict_hetgp.R")
 ```
 
 In this vignette, we will construct climatological forecasts using a heteroscedastic Gaussian process (GP). "Heteroscedastic" means the noise associated with a response variable depends on the inputs (covariates). Lake temperatures exhibit heteroscedasticity over the time of year and depth of the lake, and it it important to incorporate this when performing uncertainty quantification (UQ) for a forecast. Heteroscedastic GPs are advantageous, as they can account for input dependent noise, make accurate predictions, and provide adequate smoothing. 
@@ -41,7 +42,7 @@ The `hetGP4cast` package is simple and includes only 2 main functions: `fit_hetg
 * `covtype`: the type of covariance function used in fitting the hetGP. We recommend `Gaussian` (the default), but any one of `Gaussian`, `Matern3_2` or `Matern5_2` are acceptable. 
 * `silent`: if `TRUE` additional output will be printed to the console.
 
-`fit_hetgp()` will not work if `df` is not of standard format (has extra or missing columns or if column classes are incorrect). 
+`fit_hetgp()` will not work if `df` is not of standard format (has extra or missing columns or if column classes are incorrect). However, it will return informative errors telling the user what the issue is.
 
 Let's fit a simple hetGP to lake temperatures using only Julian day of year (DOY) as the covariate. Such a model would be most sensible if we are only interested in modeling one depth (so `depth` should not appear as a column in `df`). Additionally, we strongly recommend transforming any censored responses (chlorophyll) before model fitting (log or square root transforms are recommended).
 
@@ -97,25 +98,25 @@ preds1 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01"
 `predict_hetgp()` returns a list containing the following items:
 
 * `pred_df`: a `data.frame` in standard format containing `max-horizon`-day ahead forecasts for the desired `reference_datetime`
-* `covmat`: the predictive covariance matrix (if `save_covmat` = TRUE; otherwise `covmat` will be `NULL`
+* `covmat`: the predictive covariance matrix (if `save_covmat` = TRUE; otherwise `covmat` will be `NULL`. Note that the nugget term is included on the diagonal of `covmat`.
 * `df` the original input `data.frame` for `fit_hetgp()`
 * `preds4plotting`: a `data.frame` formatted for easy plotting; includes columns `Mean` (predictive mean), `sd` (standard deviation), `DOY`, `Lower` and `Upper` (lower and upper bounds for prediction intervals).
 * `include_depth`: boolean to denote whether or not `depth` was a model input
 * `Yname`: name of the response variable `Y`
 * `pred_width`: width of prediction intervals (value in `[0,1)`)
 
-list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
-                include_depth = include_depth, Yname = Yname, pred_width = pred_width)
 
 Now, we can quickly plot the forecast and prediction intervals using `plot`. (Custom plots can also be created--see Creating Custom Plots). Notice both the predicted mean (forecast) and the prediction intervals are smooth.
 ```{r}
-plot(predObject = preds1)
+plot_hetGPpreds(predObject = preds1)
 ```
 
 What do we gain by fitting a GP rather than naively calculating means and sd's? Let's try it.
 ```{r}
 temp = lakedat1[lakedat1$site_id == "SUGG", ]
 temp$DOY = as.integer(format(temp$datetime, "%j"))
+# for dplyr, use: avesdf = temp %>% group_by(DOY) %>%
+# summarize(Mean = mean(observation), SD = sd(observation))
 avesdf = aggregate(observation ~ DOY, data = temp, 
           FUN = function(x){
             Mean=mean(x, na.rm = TRUE)
@@ -130,20 +131,23 @@ avesdf = avesdf[avesdf$DOY %in% 245:280, ]
 # get 90% prediction intervals
 avesdf$Upper = avesdf$Mean + 1.645*avesdf$SD 
 avesdf$Lower = avesdf$Mean - 1.645*avesdf$SD 
-plot(avesdf$DOY, avesdf$Mean, type = "l", ylab = "Mean", ylim = c(22, 35))
+# make plot
+plot(avesdf$DOY, avesdf$Mean, type = "l",
+     ylab = "Mean", ylim = c(22, 35))
 lines(avesdf$DOY, avesdf$Upper, lty = 2)
 lines(avesdf$DOY, avesdf$Lower, lty = 2)
-legend("topright", legend = c("Mean", "90% pred intervals"), lwd=2, lty = c(1,2))
+legend("topright", legend = c("Mean", "90% pred intervals"),
+       lwd=2, lty = c(1,2))
 ```
 Clearly, smoothness is an issue, and uncertainty is not robustly quantified, as all SDs are weighted equally, regardless of the number of replicates for each DOY. 
 
 
 ### Depth and DOY models
-Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).
+Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check the number of replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).
 
 We can proceed exactly as before, but this time we include `depth` as a covariate. Note that including `depth` may result in a substantially longer computation time. We do not recommend fitting models to datasets of more than 5,000 observations. When the input `df` contains the extra column `depth`, the user may elect to only use only `DOY` as the covariate. However, we do not recommend doing so, as the model will pool observations from all depths.
 
-```{r cache=TRUE}
+```{r cache=FALSE}
 # extract only depths 1 and 2
 lakedat2 = lakedat[lakedat$depth %in% 1:2, ]
 
@@ -160,7 +164,7 @@ modeld_preds = predict_hetgp(het_gp_object = model_depth, reference_date = "2023
 
 As before, the results can be plotted using `plot()`.
 ```{r}
-plot(predObject = modeld_preds)
+plot_hetGPpreds(predObject = modeld_preds)
 ```
 
 ## Creating custom plots
@@ -193,7 +197,7 @@ ggplot(data = preds1$preds4plotting, aes(x = DOY, y = Mean, col = "Mean")) +
 
 ## Advanced 
 
-To construct realizations from the posterior predictive distribution, only the predictive mean and covariance matrix are necessary. Suppose we have some data $D$ composed of $(x,y)$ pairs, and we are interested in determining which function $f(x)$ generated the data $D$. If we assign a GP prior to $f$, we have $f \sim GP$. Given this setup, the posterior distribution $f(x)|D$ is generally of interest. Since we are usually interested in predictions at new values of $x$, $x*$, we usually want the posterior predictive distribution. Fortunately the posterior predictive distribution is also multivariate normal. That is, for several new $x$ locations $\mathcal{X}$ we are interested in $Y(\mathcal{X}) \mid D$: $Y(\mathcal{X}) \mid D \sim \mathcal{N}(\mu(\mathcal{X}), \Sigma(\mathcal{X}))$. Both $\mu(\mathcal{X})$ and $\Sigma(\mathcal{X})$ can be obtained from `predict_hetgp()`
+To construct realizations from the posterior predictive distribution, only the predictive mean and covariance matrix are necessary. Suppose we have some data $D$ composed of $(x,y)$ pairs, and we are interested in determining which function $f(x)$ generated the data $D$. If we assign a GP prior to $f$, we have $f \sim GP$. Given this setup, the posterior distribution $f(x)|D$ is generally of interest. Since we are usually interested in predictions at new values of $x$, $x*$, we usually want the posterior predictive distribution. Fortunately the posterior predictive distribution is also multivariate normal. That is, for several new $x$ locations $\mathcal{X}$ we are interested in $Y(\mathcal{X}) \mid D$: $Y(\mathcal{X}) \mid D \sim \mathcal{N}(\mu(\mathcal{X}), \Sigma(\mathcal{X}))$. Both $\mu(\mathcal{X})$ and $\Sigma(\mathcal{X})$ can be obtained from `predict_hetgp()`.
 
 ```{r}
 preds2 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01",
@@ -222,6 +226,7 @@ mu = preds2$preds4plotting$Mean
 length(mu)
 sigma = preds2$covmat
 dim(sigma)
+# note: smoother means and 90% PIs can be achieved with more realizations
 reals = rmultnorm(n = 200, mu = mu, sigma = sigma)
 matplot(t(reals), type= "l", col = "gray")
 ```
@@ -232,9 +237,11 @@ mymean = apply(reals, 2, mean)
 Qupper = apply(reals, 2, function(x) quantile(x, probs = .95))
 QLower = apply(reals, 2, function(x) quantile(x, probs = .05))
 
-matplot(t(reals), type= "l", col = "gray", ylab = "Mean", xlab = "DOY")
+matplot(t(reals), type= "l", col = "gray",
+        ylab = "Mean", xlab = "DOY", ylim = c(24, 32))
 lines(mymean, type = "l")
 lines(Qupper, lty=2)
 lines(QLower, lty=2)
+legend("topright", legend = c("Mean", "90% PI"), lty = c(1,2))
 ```
 

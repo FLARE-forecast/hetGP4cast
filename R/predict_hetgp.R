@@ -76,6 +76,7 @@ predict_hetgp <- function(het_gp_object,
 
       predscov = predict(x = Xnew_doy, xprime = Xnew_doy, object = het_gp_fit)
       covmat = predscov$cov
+      diag(covmat) = diag(covmat) + predscov$nugs
     }else{
       preds <- predict(x = Xnew, object = het_gp_fit)
       covmat = NULL
@@ -125,6 +126,7 @@ predict_hetgp <- function(het_gp_object,
 
       predscov = predict(x = Xnew_doy, xprime = Xnew_doy, object = het_gp_fit)
       covmat = predscov$cov
+      diag(covmat) = diag(covmat) + predscov$nugs
     }else{
       preds <- predict(x = Xnew, object = het_gp_fit)
       covmat = NULL

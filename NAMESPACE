@@ -3,3 +3,5 @@
 export(fit_hetgp)
 export(plot_hetGPpreds)
 export(predict_hetgp)
+importFrom("graphics", "legend", "lines", "par")
+importFrom("stats", "predict", "qnorm")

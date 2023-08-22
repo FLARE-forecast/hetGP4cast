@@ -222,7 +222,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
 
   if(!silent){
     print(paste("site_id is", site_id))
-    print("Y is, ", Yname)
+    print("Y is, ", yname)
     print("fitting model. For large datasets, this could take some time!")
   }
 

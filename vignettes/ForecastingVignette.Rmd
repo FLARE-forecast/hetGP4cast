@@ -160,7 +160,7 @@ model_depth = fit_hetgp(X = c("DOY","depth"), Y = "temperature",
 
 We can use the `predict_hetgp()` function as before, but we specify `depths` to be `1:2`.
 ```{r}
-modeld_preds = predict_hetgp(het_gp_object = model_depth, reference_date = "2023-09-01", depths = 1:2)
+modeld_preds = predict_hetgp(het_gp_object = model_depth, reference_datetime = "2023-09-01", depths = 1:2)
 ```
 
 As before, the results can be plotted using `plot()`.
@@ -222,26 +222,26 @@ rmultnorm <- function(n, mu, sigma){
 
 The function `rmultnorm()` takes in `n`, the number of realizations, `mu`, a mean vector, and `sigma` a covariance matrix. 
 
-```{r, fig.dim=c(6,6)}
+```{r, fig.dim=c(8,6)}
 mu = preds2$preds4plotting$Mean
 length(mu)
 sigma = preds2$covmat
 dim(sigma)
 # note: smoother means and 90% PIs can be achieved with more realizations
 reals = rmultnorm(n = 200, mu = mu, sigma = sigma)
-matplot(t(reals), type= "l", col = "gray")
+matplot(245:279, t(reals), type= "l", col = "gray", xlab = "DOY")
 ```
 
 We can then extract means and quantiles and make a plot.
-```{r, fig.dim=c(6,6)}
+```{r, fig.dim=c(8,6)}
 mymean = apply(reals, 2, mean)
 Qupper = apply(reals, 2, function(x) quantile(x, probs = .95))
 QLower = apply(reals, 2, function(x) quantile(x, probs = .05))
 
-matplot(t(reals), type= "l", col = "gray",
-        ylab = "Mean", xlab = "DOY", ylim = c(24, 32))
-lines(mymean, type = "l")
-lines(Qupper, lty=2)
-lines(QLower, lty=2)
+matplot(245:279, t(reals), type= "l", col = "gray",
+        ylab = "Mean", xlab = "DOY", ylim = c(20, 34))
+lines(245:279,mymean, type = "l")
+lines(245:279,Qupper, lty=2)
+lines(245:279,QLower, lty=2)
 legend("topright", legend = c("Mean", "90% PI"), lty = c(1,2))
 ```

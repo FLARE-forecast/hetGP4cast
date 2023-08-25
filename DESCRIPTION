@@ -4,7 +4,7 @@ Date: 2023-07-21
 Title: Fitting climatological models via heteroscedastic Gaussian process models  
 Authors@R: c(person("Maike", "Holthuijzen", role = c("aut", "cre"),
                      email = "mholthuijzen@alumni.uidaho.edu"))
-Author: Maike Holthuijzen [aut, cre],
+Author: Maike Holthuijzen [aut, cre], Quinn Thomas [aut]
 Maintainer: Maike Holthuijzen <mholthuijzen@alumni.uidaho.edu>
 Description: This package fits a climatological model via a heteroscedastic Gaussian process model,specifically for use in the NEON forecasting challenge.
 Depends: R (>= 2.10)
@@ -16,6 +16,8 @@ Imports: lubridate, hetGP
 Suggests: 
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    readr,
+    ggplot2
 Config/testthat/edition: 3
 VignetteBuilder: knitr

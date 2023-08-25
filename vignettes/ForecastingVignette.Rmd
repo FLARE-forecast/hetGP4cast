@@ -50,20 +50,17 @@ This sample dataset contains only lake temperatures for several reservoirs.
 lakedat=readr::read_csv("https://data.ecoforecast.org/neon4cast-targets/aquatics/aquatics-expanded-observations.csv.gz", show_col_types = FALSE)
 
 # extract only 00UTC
-test_UTC_split = strsplit(as.character(lakedat$datetime), " ")
+lakedat$hour = format(lakedat$datetime, format = "%H:%M:%S")
 
-UTC_df = as.data.frame(do.call("rbind", test_UTC_split))
-names(UTC_df) = c("Date", "Time")
-idx = which(UTC_df$Time == "00:00:00")
-lakedat = lakedat[idx, ]
-
-# inspect resulting df
-head(lakedat)
+lakedat = lakedat[lakedat$hour == "00:00:00", ]
 
 # extract only 1m depth observations; get rid of depth column; eliminate NAs
 lakedat = lakedat[complete.cases(lakedat), ]
 lakedat1 = lakedat[lakedat$depth == 1, ]
 lakedat1$depth = NULL
+
+# inspect resulting df
+head(lakedat)
 ```
 
 Let's fit a day of year climatological model for the `SUGG` site.
@@ -77,7 +74,7 @@ model1 = fit_hetgp(X = "DOY", Y = "temperature",
 * hetGP fit object containing information about the model fit
 * `df`: the input dataframe 
 * `include_depth`: boolean to denote whether or not depth was used as a covariate
-* `Y_resp`: values of the response variable
+* `Yname`: values of the response variable
 
 To make forecasts, we need only to pass the return value of `fit_hetgp()` to `predict_hetgp()`. `predict_hetgp()`'s parameters include:
 * `hetGP_fit:` hetGP object fit from `fit_hetgp()`
@@ -125,7 +122,7 @@ avesdf = aggregate(observation ~ DOY, data = temp,
 avesdf <- do.call("data.frame", avesdf)
 colnames(avesdf) = c("DOY", "Mean", "SD")
 avesdf = avesdf[avesdf$DOY %in% 245:280, ]
-# get 90% prediction intervals
+# get 90% 'prediction' intervals
 avesdf$Upper = avesdf$Mean + 1.645*avesdf$SD 
 avesdf$Lower = avesdf$Mean - 1.645*avesdf$SD 
 ```
@@ -139,9 +136,70 @@ lines(avesdf$DOY, avesdf$Lower, lty = 2)
 legend("topright", legend = c("Mean", "90% pred intervals"),
        lwd=2, lty = c(1,2))
 ```
+Clearly, smoothness is an issue, and uncertainty is not robustly quantified, as all SDs are weighted equally, regardless of the number of replicates for each DOY. By definition, climatological forecasts focus on broader trends and tendencies over longer time periods, so we would expect some degree of smoothness for both the mean and prediction intervals of a climatological forecast. The fitting mechanism for a hetGP accounts for unequal number of replicates over unique inputs (either DOY or DOY and depth) and provides smooth means and prediction intervals.
 
 
-Clearly, smoothness is an issue, and uncertainty is not robustly quantified, as all SDs are weighted equally, regardless of the number of replicates for each DOY. 
+Now let's try making a forecast using a hetGP climatological model and and empirical model. We'll split the dataset for the `SUGG` site into training and testing sets, fit competing models to the train set, and compare forecasts to observations in the test set.
+```{r}
+# train on 2017-2022
+laketrain = lakedat1[lakedat1$datetime <= as.Date("2022-01-01"), ]
+
+# test on 2022
+laketest = lakedat1[lakedat1$datetime > as.Date("2022-01-01"), ]
+
+# HetGP training model 
+modeltrain = fit_hetgp(X = "DOY", Y = "temperature",
+                   site_id = "SUGG", df = laketrain)
+
+# obtain predictions
+trainpreds = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01")
+
+# obtain empirical means/SDs on the training set for the SUGG site
+temp = laketrain[laketrain$site_id == "SUGG", ]
+temp$DOY = as.integer(format(temp$datetime, "%j"))
+# for dplyr, use: avesdf = temp %>% group_by(DOY) %>%
+# summarize(Mean = mean(observation), SD = sd(observation))
+avesdf = aggregate(observation ~ DOY, data = temp, 
+                   FUN = function(x){
+                     Mean=mean(x, na.rm = TRUE)
+                     SD = sd(x)
+                     return(c(Mean, SD))
+                   }
+)
+
+avesdf <- do.call("data.frame", avesdf)
+colnames(avesdf) = c("DOY", "Mean", "SD")
+avesdf = avesdf[avesdf$DOY %in% 245:280, ]
+# get 90% prediction intervals
+avesdf$Upper = avesdf$Mean + 1.645*avesdf$SD 
+avesdf$Lower = avesdf$Mean - 1.645*avesdf$SD 
+```
+
+```{r, fig.dim=c(8,6)}
+# extract data for the SUGG site from test set
+sugtest = laketest[laketest$site_id == "SUGG", ]
+sugtest$DOY = as.integer(format(sugtest$datetime, "%j"))
+sugtest = sugtest[sugtest$DOY %in% 245:280, ]
+
+# these are the forecasts from the hetGP model
+hetpreds = trainpreds$preds4plotting
+
+# make a plot
+plot(hetpreds$DOY, hetpreds$Mean, type = "l",
+     lwd = 2, ylim = c(23, 32), ylab = "Temp C", xlab = "DOY",
+     col = "darkorange")
+lines(hetpreds$DOY, sugpreds$Lower, lwd = 2, lty = 2, col = "darkorange")
+lines(hetpreds$DOY, sugpreds$Upper, lwd = 2, lty = 2, col = "darkorange")
+lines(avesdf$DOY, avesdf$Mean, lwd = 2, col = "darkgray")
+lines(avesdf$DOY, avesdf$Upper, lty = 2, lwd = 2, col = "darkgray")
+lines(avesdf$DOY, avesdf$Lower, lty = 2, lwd= 2, col = "darkgray")
+points(sugtest$DOY, sugtest$observation, col = "purple", pch = 19)
+legend("bottomleft", legend = c("hetGP", "Empirical",
+                                "test observations"), lwd=2, 
+       lty=1, col = c("darkorange", "darkgray", "purple"))
+```
+
+The empirical as well as hetGP climatological models both do reasonably well with respect to prediction and prediction interval coverage, although prediction intervals of both models fail to cover 6 observations near the end of the forecast period.  
 
 ### Depth and DOY models
 Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check the number of replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).
@@ -227,8 +285,9 @@ mu = preds2$preds4plotting$Mean
 length(mu)
 sigma = preds2$covmat
 dim(sigma)
+nreals = 200
 # note: smoother means and 90% PIs can be achieved with more realizations
-reals = rmultnorm(n = 200, mu = mu, sigma = sigma)
+reals = rmultnorm(n = nreals, mu = mu, sigma = sigma)
 matplot(245:279, t(reals), type= "l", col = "gray", xlab = "DOY")
 ```
 
@@ -245,3 +304,15 @@ lines(245:279,Qupper, lty=2)
 lines(245:279,QLower, lty=2)
 legend("topright", legend = c("Mean", "90% PI"), lty = c(1,2))
 ```
+
+Fortunately, the `hetGP4cast` package includes a function to generate realizations. We need only to pass the prediction object to the function `make_realizations`. The number of realizations desired is specified with `nreals`.
+```{r}
+mySims = make_realizations(predObject = preds2, nreals = 500)
+```
+
+The function returns a list containing a data.frame in standard format including the realizations as well as a matrix containing the realizations.
+
+```{r}
+head(pred_df_reals)
+```
+

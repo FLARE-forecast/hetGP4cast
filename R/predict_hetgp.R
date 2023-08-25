@@ -66,7 +66,6 @@ predict_hetgp <- function(het_gp_object,
 
   # DOY is only covariate
   if (!include_depth){
-    print("depth is not a covariate")
     Xnew <- matrix(1:365)
     Xnew_doy = matrix(doys)
 

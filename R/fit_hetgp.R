@@ -29,9 +29,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
     tryCatch(
       expr = {
         df$DOY = as.integer(format(df$datetime, "%j"))
-        message("Success")
         return(df)
-        #message("Successfully executed the log(x) call.")
       },
       error = function(e){
         message('Cannot convert datetime variable into DOY. Please ensure datetime variable is

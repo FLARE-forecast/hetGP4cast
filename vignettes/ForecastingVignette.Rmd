@@ -1,12 +1,12 @@
 ---
 title: "Adventures in forecasting: fitting climatological models using heteroscedastic GPs"
-output: rmarkdown::html_vignette
+output: html_document
+extra_dependencies: ["amssymb", "amsmath"]
+bibliography: references.bib 
 vignette: >
   %\VignetteIndexEntry{Adventures in forecasting: fitting climatological models using heteroscedastic GPs}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-extra_dependencies: ["amssymb", "amsmath"]
-bibliography: references.bib 
 ---
 
 ```{r, include = FALSE}
@@ -53,6 +53,7 @@ lakedat=readr::read_csv("https://data.ecoforecast.org/neon4cast-targets/aquatics
 lakedat$hour = format(lakedat$datetime, format = "%H:%M:%S")
 
 lakedat = lakedat[lakedat$hour == "00:00:00", ]
+lakedat$hour = NULL
 
 # extract only 1m depth observations; get rid of depth column; eliminate NAs
 lakedat = lakedat[complete.cases(lakedat), ]
@@ -60,7 +61,7 @@ lakedat1 = lakedat[lakedat$depth == 1, ]
 lakedat1$depth = NULL
 
 # inspect resulting df
-head(lakedat)
+head(lakedat1)
 ```
 
 Let's fit a day of year climatological model for the `SUGG` site.
@@ -83,7 +84,6 @@ To make forecasts, we need only to pass the return value of `fit_hetgp()` to `pr
 * `max_horizon`: the maximum forecast horizon in days (default is 35).
 * `depths`: Depths (m) for which forecasts are desired (if applicable, this option is ignored if depth is not a covariate). If `depth` was used as a covariate in the object produced from `fit_hetgp()`, the user may specify which depths to include in a forecast. Only numerical values greater than 0 are allowed for `depths` (default is `1:10`).
 * `PI`: value in [0,1) to denote value of prediction intervals. We recommend `PI` = 0.90 or 0.95 (default is 0.90).
-
 
 ```{r}
 preds1 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01")
@@ -188,8 +188,8 @@ hetpreds = trainpreds$preds4plotting
 plot(hetpreds$DOY, hetpreds$Mean, type = "l",
      lwd = 2, ylim = c(23, 32), ylab = "Temp C", xlab = "DOY",
      col = "darkorange")
-lines(hetpreds$DOY, sugpreds$Lower, lwd = 2, lty = 2, col = "darkorange")
-lines(hetpreds$DOY, sugpreds$Upper, lwd = 2, lty = 2, col = "darkorange")
+lines(hetpreds$DOY, hetpreds$Lower, lwd = 2, lty = 2, col = "darkorange")
+lines(hetpreds$DOY, hetpreds$Upper, lwd = 2, lty = 2, col = "darkorange")
 lines(avesdf$DOY, avesdf$Mean, lwd = 2, col = "darkgray")
 lines(avesdf$DOY, avesdf$Upper, lty = 2, lwd = 2, col = "darkgray")
 lines(avesdf$DOY, avesdf$Lower, lty = 2, lwd= 2, col = "darkgray")
@@ -199,17 +199,17 @@ legend("bottomleft", legend = c("hetGP", "Empirical",
        lty=1, col = c("darkorange", "darkgray", "purple"))
 ```
 
-The empirical as well as hetGP climatological models both do reasonably well with respect to prediction and prediction interval coverage, although prediction intervals of both models fail to cover 6 observations near the end of the forecast period.  
+The empirical as well as hetGP climatological models both do reasonably well with respect to prediction and prediction interval coverage.  
 
 ### Depth and DOY models
-Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check the number of replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).
+Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check the number of replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).:
+
 
 We can proceed exactly as before, but this time we include `depth` as a covariate. Note that including `depth` may result in a substantially longer computation time. We do not recommend fitting models to datasets of more than 5,000 observations. When the input `df` contains the extra column `depth`, the user may elect to only use only `DOY` as the covariate. However, we do not recommend doing so, as the model will pool observations from all depths.
 
 ```{r cache=FALSE}
 # extract only depths 1 and 2
 lakedat2 = lakedat[lakedat$depth %in% 1:2, ]
-
 # takes a little bit to run
 model_depth = fit_hetgp(X = c("DOY","depth"), Y = "temperature",
                    site_id = "BARC", df = lakedat2)
@@ -266,9 +266,8 @@ dim(preds2$covmat)
 
 Now, to generate realizations, we can use the following function (alternatively, one could use the `mvtnorm` package.)
 ```{r}
-# function to generate MVN realizations (using svd)
+# function to generate MVN realizations
 rmultnorm <- function(n, mu, sigma){
-  # returns a n x length(mu) matrix
   p <- length(mu)
   z <- matrix(rnorm(n * p),nrow=n)
   svdsig <- svd(sigma)
@@ -291,7 +290,7 @@ reals = rmultnorm(n = nreals, mu = mu, sigma = sigma)
 matplot(245:279, t(reals), type= "l", col = "gray", xlab = "DOY")
 ```
 
-We can then extract means and quantiles and make a plot.
+We can then extract means, 95th and 5th quantiles and make a plot.
 ```{r, fig.dim=c(8,6)}
 mymean = apply(reals, 2, mean)
 Qupper = apply(reals, 2, function(x) quantile(x, probs = .95))
@@ -305,6 +304,8 @@ lines(245:279,QLower, lty=2)
 legend("topright", legend = c("Mean", "90% PI"), lty = c(1,2))
 ```
 
+
+
 Fortunately, the `hetGP4cast` package includes a function to generate realizations. We need only to pass the prediction object to the function `make_realizations`. The number of realizations desired is specified with `nreals`.
 ```{r}
 mySims = make_realizations(predObject = preds2, nreals = 500)
@@ -313,6 +314,6 @@ mySims = make_realizations(predObject = preds2, nreals = 500)
 The function returns a list containing a data.frame in standard format including the realizations as well as a matrix containing the realizations.
 
 ```{r}
-head(pred_df_reals)
+head(mySims$pred_df_reals)
 ```
 

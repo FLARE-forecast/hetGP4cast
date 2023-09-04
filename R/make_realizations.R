@@ -9,7 +9,7 @@
 #' @examples
 #' data(sample_lake_data_1mdepth)
 #' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
-#' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
+#' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"), save_covmat=TRUE)
 #'
 #' sims = make_realizations(predObject = preds)
 #'
@@ -27,7 +27,7 @@ make_realizations = function(predObject, nreals = 200){
   pred_df = predObject$pred_df
   pred_df = pred_df[pred_df$parameter == "mu", ]
   horizons = nrow(pred_df)
-  bigdf = Reduce(function(.x, .y) rbind(.x, df), seq_len(nreals -1), init = df)
+  bigdf = Reduce(function(.x, .y) rbind(.x, pred_df), seq_len(nreals -1), init = pred_df)
   bigdf$prediction = NULL
   tempdf = data.frame(prediction = temp, number = rep(1:nreals, each = horizons))
   bigdf = cbind(bigdf, tempdf)

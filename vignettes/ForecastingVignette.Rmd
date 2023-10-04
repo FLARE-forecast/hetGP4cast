@@ -32,16 +32,17 @@ In this section, we will use the `hetGP4cast` package to fit hetGP's to sample d
 The `hetGP4cast` package is simple and includes only 2 main functions: `fit_hetgp()` and `predict_hetgp()` for fitting hetGPs and predicting (forecasting) using the fitted model. The parameters for `fit_hetgp()` are:
 
 
-* `X:` model inputs (covariates). Can be either `DOY` or `c(DOY, depth)`. `DOY` refers to using Julian day of year as a covariate, and `depth` refers to using lake depth as a covariate. No other values will work.
+* `X:` model inputs (covariates). Can be either `DOY` or `c(DOY, <name of covariate>)`. `DOY` refers to using Julian day of year as a covariate. The additional covariate besides `DOY` must be numeric. Categorical variables are currently not supported.
 * `Y:` response variable. Must be one of the unique values of the `variable` column in `df`.
 * `site_id`: The focal site. Must be one or more of the unique values of the `site_id` columns of `df`.
 * `df` the input dataframe. Must be in standard format, see [here](https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation). The only other extra column that may be included must have a column name `depth` and should denote the depth of the temperature in m. The `datetime` column must be formatted as YYYY-MM-DD, but it may either be of class `string, POSIXct` or `Date`.
 * `covtype`: the type of covariance function used in fitting the hetGP. We recommend `Gaussian` (the default), but any one of `Gaussian`, `Matern3_2` or `Matern5_2` are acceptable. 
+* `covar_levels` : the levels at which forecasts are to be evaluated if an additional covariate (other than DOY) in included. If not specified (`covar_levels`= `NULL`), and the number of levels are less than 10, those levels will be used; if there are more than 10 levels, 10 levels will be specified using the following quantiles: 0,11,22,33,44,55,66,77,88, 100. The user may also specify a vector levels. Values of `covar_levels` must be numeric.
 * `silent`: if `TRUE` additional output will be printed to the console.
 
 `fit_hetgp()` will not work if `df` is not of standard format (has extra or missing columns or if column classes are incorrect). However, it will return informative errors telling the user what the issue is.
 
-Let's fit a simple hetGP to lake temperatures using only Julian day of year (DOY) as the covariate. Such a model would be most sensible if we are only interested in modeling one depth (so `depth` should not appear as a column in `df`). Additionally, we strongly recommend transforming any censored responses (chlorophyll) before model fitting (log or square root transforms are recommended).
+Let's fit a simple hetGP to lake temperatures using only Julian day of year (DOY) as the covariate. Additionally, we strongly recommend transforming any censored responses (chlorophyll) before model fitting (log or square root transforms are recommended).
 
 First, we open an example dataset. 
 This sample dataset contains only lake temperatures for several reservoirs.
@@ -74,15 +75,16 @@ model1 = fit_hetgp(X = "DOY", Y = "temperature",
 `fit_hetgp()` returns a list with the following items:
 * hetGP fit object containing information about the model fit
 * `df`: the input dataframe 
-* `include_depth`: boolean to denote whether or not depth was used as a covariate
+* `include_covar`: boolean to denote whether or not depth was used as a covariate
 * `Yname`: values of the response variable
+* `covar_levels`: levels of the covariate at which predictions (forecasts) are to be made
+* `Y_resp`: a vector containing the values of the response variable
 
 To make forecasts, we need only to pass the return value of `fit_hetgp()` to `predict_hetgp()`. `predict_hetgp()`'s parameters include:
 * `hetGP_fit:` hetGP object fit from `fit_hetgp()`
 * `save_covmat:` boolean, denotes whether the predictive covariance matrix should be saved (default is \texttt{FALSE})
 * `reference_datetime`: the reference date for which forecasts are desired. `reference_datetime` can be either a string or of class `Date` or `POSIXct` and must be formatted as `YYYY-MM-DD`.
 * `max_horizon`: the maximum forecast horizon in days (default is 35).
-* `depths`: Depths (m) for which forecasts are desired (if applicable, this option is ignored if depth is not a covariate). If `depth` was used as a covariate in the object produced from `fit_hetgp()`, the user may specify which depths to include in a forecast. Only numerical values greater than 0 are allowed for `depths` (default is `1:10`).
 * `PI`: value in [0,1) to denote value of prediction intervals. We recommend `PI` = 0.90 or 0.95 (default is 0.90).
 
 ```{r}
@@ -95,9 +97,11 @@ preds1 = predict_hetgp(het_gp_object = model1, reference_datetime = "2023-09-01"
 * `covmat`: the predictive covariance matrix (if `save_covmat` = TRUE; otherwise `covmat` will be `NULL`. Note that the nugget term is included on the diagonal of `covmat`.
 * `df` the original input `data.frame` for `fit_hetgp()`
 * `preds4plotting`: a `data.frame` formatted for easy plotting; includes columns `Mean` (predictive mean), `sd` (standard deviation), `DOY`, `Lower` and `Upper` (lower and upper bounds for prediction intervals).
-* `include_depth`: boolean to denote whether or not `depth` was a model input
+* `include_covar`: boolean to denote whether or not another covariate in addition to `DOY` was included
 * `Yname`: name of the response variable `Y`
 * `pred_width`: width of prediction intervals (value in `[0,1)`)
+* `covar_levels`: levels of the covariate at which predictions are to be made
+* `covar_name`: name of the additional covariate, if applicable
 
 
 Now, we can quickly plot the forecast and prediction intervals using `plot`. (Custom plots can also be created--see Creating Custom Plots). Notice both the predicted mean (forecast) and the prediction intervals are smooth.
@@ -136,7 +140,7 @@ lines(avesdf$DOY, avesdf$Lower, lty = 2)
 legend("topright", legend = c("Mean", "90% pred intervals"),
        lwd=2, lty = c(1,2))
 ```
-Clearly, smoothness is an issue, and uncertainty is not robustly quantified, as all SDs are weighted equally, regardless of the number of replicates for each DOY. By definition, climatological forecasts focus on broader trends and tendencies over longer time periods, so we would expect some degree of smoothness for both the mean and prediction intervals of a climatological forecast. The fitting mechanism for a hetGP accounts for unequal number of replicates over unique inputs (either DOY or DOY and depth) and provides smooth means and prediction intervals.
+Clearly, smoothness is an issue, and uncertainty is not robustly quantified, as all SDs are weighted equally, regardless of the number of replicates for each DOY. By definition, climatological forecasts focus on broader trends and tendencies over longer time periods, so we would expect some degree of smoothness for both the mean and prediction intervals of a climatological forecast. The fitting mechanism for a hetGP accounts for unequal number of replicates over unique inputs and provides smooth means and prediction intervals.
 
 
 Now let's try making a forecast using a hetGP climatological model and and empirical model. We'll split the dataset for the `SUGG` site into training and testing sets, fit competing models to the train set, and compare forecasts to observations in the test set.
@@ -201,30 +205,6 @@ legend("bottomleft", legend = c("hetGP", "Empirical",
 
 The empirical as well as hetGP climatological models both do reasonably well with respect to prediction and prediction interval coverage.  
 
-### Depth and DOY models
-Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check the number of replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).:
-
-
-We can proceed exactly as before, but this time we include `depth` as a covariate. Note that including `depth` may result in a substantially longer computation time. We do not recommend fitting models to datasets of more than 5,000 observations. When the input `df` contains the extra column `depth`, the user may elect to only use only `DOY` as the covariate. However, we do not recommend doing so, as the model will pool observations from all depths.
-
-```{r cache=FALSE}
-# extract only depths 1 and 2
-lakedat2 = lakedat[lakedat$depth %in% 1:2, ]
-# takes a little bit to run
-model_depth = fit_hetgp(X = c("DOY","depth"), Y = "temperature",
-                   site_id = "BARC", df = lakedat2)
-```
-
-
-We can use the `predict_hetgp()` function as before, but we specify `depths` to be `1:2`.
-```{r}
-modeld_preds = predict_hetgp(het_gp_object = model_depth, reference_datetime = "2023-09-01", depths = 1:2)
-```
-
-As before, the results can be plotted using `plot()`.
-```{r, fig.dim=c(8,6)}
-plot_hetGPpreds(predObject = modeld_preds)
-```
 
 ## Creating custom plots
 We can quickly plot results by passing the object from `predict_hetgp()` to `plot`. However, users may also create custom plots. The `preds4plotting` `data.frame` can be used for plotting. Let's use the predictions from the DOY-only model fit.
@@ -267,7 +247,7 @@ dim(preds2$covmat)
 Now, to generate realizations, we can use the following function (alternatively, one could use the `mvtnorm` package.)
 ```{r}
 # function to generate MVN realizations
-rmultnorm <- function(n, mu, sigma){
+rmultnorm = function(n, mu, sigma){
   p <- length(mu)
   z <- matrix(rnorm(n * p),nrow=n)
   svdsig <- svd(sigma)
@@ -308,12 +288,39 @@ legend("topright", legend = c("Mean", "90% PI"), lty = c(1,2))
 
 Fortunately, the `hetGP4cast` package includes a function to generate realizations. We need only to pass the prediction object to the function `make_realizations`. The number of realizations desired is specified with `nreals`.
 ```{r}
-mySims = make_realizations(predObject = preds2, nreals = 500)
+mySims = make_realizations(predObject = preds2, nreals = 200)
 ```
 
 The function returns a list containing a data.frame in standard format including the realizations as well as a matrix containing the realizations.
 
 ```{r}
 head(mySims$pred_df_reals)
+```
+
+
+## Climatological models with 2 covariates
+Note: because models with 2 covariates can take some time to fit, these code chunks are not evaluated in this document, but feel free to test them on your own system.
+Let's fit a model that also includes depth. To keep computation time down, we only use depths 1 and 2 for this example. If there are not enough replicates over `depth` and `DOY`, parameter estimation is not possible, and will get an error (you can check the number of replicates by doing `table(df$depth, df$DOY)` after converting the `datetime` column to DOY (Julian day).:
+
+
+We can proceed exactly as before, but this time we include `depth` as a covariate. Note that including `depth` may result in a substantially longer computation time. We do not recommend fitting models to datasets of more than 5,000 observations. When the input `df` contains the extra column `depth`, the user may elect to only use only `DOY` as the covariate. However, we do not recommend doing so, as the model will pool observations from all depths.
+
+```{r eval=FALSE}
+# extract only depths 1 and 2
+lakedat2 = lakedat[lakedat$depth %in% 1:2, ]
+# takes a little bit to run
+model_depth = fit_hetgp(X = c("DOY","depth"), Y = "temperature",
+                   site_id = "BARC", df = lakedat2)
+```
+
+
+We can use the `predict_hetgp()` function as before, but we specify `depths` to be `1:2`.
+```{r eval=FALSE}
+modeld_preds = predict_hetgp(het_gp_object = model_depth, reference_datetime = "2023-09-01")
+```
+
+As before, the results can be plotted using `plot()`.
+```{r, eval=FALSE, fig.dim=c(8,6)}
+plot_hetGPpreds(predObject = modeld_preds)
 ```
 

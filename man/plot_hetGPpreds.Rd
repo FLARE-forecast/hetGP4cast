@@ -20,5 +20,4 @@ data(sample_lake_data_1mdepth)
 mod1 =  fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
 preds = predict_hetgp(het_gp_object = mod1, reference_datetime = "2023-09-01")
 plot_hetGPpreds(predObject=preds)
-
 }

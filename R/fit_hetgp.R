@@ -1,28 +1,32 @@
-
 #' Fit a heteroscedastic Gaussian process model
 #'
 #' @param X X name(s) of covariates for model fitting (string);
-#' Accepted values are: one or both of "DOY" (day of year), "depth" (depth of measurement in m)
+#' Accepted values are: "DOY" and the name of a valid covariate found in df. Covariates other than "DOY"
+#' must be numeric. Categorical variables are currently not supported.
 #' @param Y Y name of response (string); accepted values are one of unique(df$variable)
-#' @param site_id name of site
+#' @param site_id name of site; accepted values are one or more of unique(df$site_id)
 #' @param df data.frame in standard format, see \href{here}{https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation}
 #' @param covtype type of covariance function to use; can be one of
 #' "Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()
 #' @param silent if TRUE, more output will be printed to the console
-#'
+#' @param covar_levels a numeric vector specifying the values of the covariate other than DOY (if applicable)
+#'  at which forecasts should be made. If not specified, covar_levels will be set to unique values of the covariate if there
+#'  are less than 10; otherwise 10 levels will be specified at the following quantiles: 0,11,22,33,44,55,66,77,88, 100
 #' @return a list containing the hetGP fit object, the original df,
-#' a boolean to denote whether not depth was used as an input, the vector of observations, and the name of the response variable
+#' a boolean to denote whether not depth was used as an input; covar_name, the name of the covariate other than DOY;
+#' the vector of observations; covar_levels, a vector containing values of the covariate on which predictions should be
+#' based; and Yname, the name of the response variable
+#'
 #' @export
 #'
 #' @examples data(sample_lake_data_1mdepth)
 #' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 #'
-#' data(lake_data_depth)
+#' \dontrun{data(lake_data_depth)
 #' modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature", site_id = "BARC", df = lake_data_depth)
+#' }
 #' @references Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
-fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
-  use_depth = FALSE
-
+fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE, covar_levels = NULL){
   # function for safely converting datetime to DOY
   # if date cannot be converted to julian day then it will throw sensible error
   format_datetime_df <- function(df){
@@ -54,44 +58,19 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
   df_names = colnames(df)
   # df_names = c("datetime","x", "site_id","variable", "yY")
 
-  # but prediction would be replaced by something else?
   standard_names = c("datetime", "site_id", "variable", "observation")
-  standard_names_depth = c("datetime", "site_id", "variable", "observation", "depth")
+
+
   names_in_df = df_names %in% standard_names
-  names_in_df_depth = df_names %in% standard_names_depth
 
-  # data sets are in correct format, set flag for using depth
-  if (setequal(df_names, standard_names) || setequal(df_names, standard_names_depth)){
-    if (length(df_names) == 5){
-      use_depth = TRUE
-    }
-  }else{
-
-    missing_names = standard_names_depth[! (standard_names_depth %in% intersect(df_names, standard_names_depth))]
-    extra_names = df_names[!(df_names %in% (intersect(df_names, standard_names_depth)))]
-
-    # missing and extra names
-    if (length(missing_names)){
-      if (length(missing_names)){
-        warning("You are missing the following column names in df (depth is optional): ",
-                paste(missing_names, collapse = ' '))
-        warning("The following extra columns in df were detected: ", paste(extra_names, collapse = ' '))
-        stop("please ensure df is in the correct format before proceeding")
-      }
-    }
-    # missing colnames only
-    if (length(missing_names)){
-      warning("You are missing the following column names in df (depth is optional): ",
-              paste(missing_names, collapse = ' '))
-      stop("please ensure df is in the correct format before proceeding")
-    }
-    # extra names only
-    if (length(extra_names)){
-      warning("The following extra columns in df were detected: ", paste(extra_names, collapse = ' '))
-      stop("please ensure df is in the correct format before proceeding")
-    }
-
+  if (!setequal(intersect(standard_names, df_names) , standard_names)){
+    df_names1 =  (intersect(standard_names, df_names))
+    missing_names = standard_names[!standard_names %in% df_names1]
+    warning("You are missing the following column names in df : ",
+            paste(missing_names, collapse = ' '))
+    stop("Please ensure df is in correct format.")
   }
+
   # check if names from X, Y are in standard names
   # Now df is in correct format
   # check Y
@@ -104,7 +83,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
     stop("The response, Y, must be a string equal to one of the following : ", paste(accepted_Y, collapse = ' '))
   }
 
-  accepted_vars = unique(df$variable)
+  #accepted_vars = unique(df$variable)
   #accepted_vars = c("temperature", "salt", "algae")
 
 
@@ -112,37 +91,74 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
     stop("The only supported names for the response variable, Y, are : ", paste(accepted_Y, collapse = ' '))
   }
 
+  num_vars = length(X)
+  if (num_vars > 2){
+    stop("this function currently only supports the use of maximum 2 covariates")
+  }
+  if (num_vars == 1){
+    use_depth = FALSE
+  }else{
+    use_depth = TRUE
+  }
+
+  # using 2 covars
   if (use_depth){
     if (!silent){
-      print("use depth")
+      print("using 2 covariates for fitting")
     }
     # check X's
     # must be character
-    # be be Depth, DOY or c(Depth, DOY)
-    accepted_Xs = c("depth", "DOY")
+    Xvals = df_names[! df_names %in% standard_names]
 
-    if (!is.character(X)){
-      stop("Inputs, X, must be strings. Accepted inputs are ", paste(accepted_Xs, collapse = ' '))
+    accepted_Xs = c(Xvals, "DOY")
+    if (anyNA( match(X , accepted_Xs))){
+     stop("you entered a name for X that does not exist in df")
     }
-    if (length(X) == length(accepted_Xs)){
-      if(anyNA(match(X, accepted_Xs))){
-        stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
+
+    # covariates must be of class numeric--no factors/characters
+    NOTdoyx = X[ X %in% Xvals]
+    if (!is.numeric(df[[NOTdoyx]])){
+      stop("covariates must be of class numeric.")
+    }
+
+    # get levels of covariate at which predictions will be evaluated with predict_hetgp()
+    if (!is.null(covar_levels)){
+      myrange = range(NOTdoyx)
+      if (!is.numeric(covar_levels)){
+        stop("covar_levels must be numeric.")
+      }
+
+      if (length(which(covar_levels >= myrange[1] & covar_levels <= myrange[2])) != length(covar_levels)){
+          warning(paste("some covariate levels are outside of the range of ", Xvals))
+      }
+      # check to make sure valid levels are entered
+    }else{ # automatically get covariate levels
+
+      uniq_vals  = unique(df[[NOTdoyx]])
+      if (length(uniq_vals) <= 10){
+        covar_levels = unique(df[[NOTdoyx]])
+      }else{
+      covar_levels = unname( quantile(df[[NOTdoyx]], probs=seq(0,1, length.out=10)) )
+      }
+    }
+
+    covar_name = NOTdoyx
+
+    # should be in order: DOY, covar
+    if ("DOY" %in% X){
+      idx = which(X == "DOY")
+      if (idx == 2){
+        X = rev(X)
       }
     }else{
-      # X is a different length than accepted Xs
-      # check if there is an extra / bad X name
-      if ( anyNA(match(X, accepted_Xs))){
-        stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
-      }else{
-        warning("both depth and DOY are present in df, but only one covariate was entered: ", X)
-        use_depth = FALSE
-      }
-
-    }# use_depth = FALSE
+      stop("X must contain 'DOY' " )
+    }
+  # use_depth = FALSE, using one covar--DOY
   }else{
     if (!silent){
-      print("depth is not a covariate")
+      print("modeling with only one covariate")
     }
+    covar_levels = NULL
     accepted_Xs = "DOY"
 
     if (!is.character(X)){
@@ -158,7 +174,10 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
       }
     }
 
+    covar_name = "DOY"
   }
+
+
   # check if datetime is Date or Posix class
   if (!inherits(df$datetime, c("Date", "POSIXt"))){
     df$datetime = as.Date(df$datetime)
@@ -231,8 +250,11 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE){
 
   return(list(het_gp_fit = het_gp_fit,
               df = df,
-              include_depth = use_depth,
-              variable = Y_resp,
+              include_covar = use_depth,
+              covar_levels = covar_levels,
+              covar_name = covar_name,
+              Y_resp = Y_resp,
               Yname = yname))
 
 }
+

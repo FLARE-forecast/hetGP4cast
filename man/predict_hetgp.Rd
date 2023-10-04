@@ -9,7 +9,6 @@ predict_hetgp(
   save_covmat = FALSE,
   reference_datetime,
   max_horizon = 35,
-  depths = 1:10,
   PI = 0.9
 )
 }
@@ -22,14 +21,15 @@ predict_hetgp(
 
 \item{max_horizon}{forecast horizon in days (default is 35)}
 
-\item{depths}{depths at which predictions are desired (numeric vector >= 0) (default is 1:10)}
-
 \item{PI}{prediction interval coverage (numeric between 0 and 1) (default is 1:10)}
 }
 \value{
-a list containing a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
-the original df used for fitting, a data.frame containing the mean, sd and upper and lower bounds (easier for plotting);
-a boolean value denoting whether depth was a covariate, and the name of the response variable
+a list containing a data.frame in standard format containing forecasts;
+a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
+the original df used for fitting; preds4plotting, a data.frame containing the mean, sd and upper and lower bounds (easier for plotting);
+include_covar, a boolean value denoting whether another covariate was used, covar_name; covar_levels, the values of the additional covariate
+at which forecasts were made;covar_name, the name of the additional covariate (or DOY if DOY is the only covariate),
+and Yname, the name of the response variable
 }
 \description{
 Obtain posterior predictive distribution from a heteroscedastic Gaussian process model fit
@@ -39,10 +39,11 @@ data(sample_lake_data_1mdepth)
 mod1 = fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
 
-data(lake_data_depth)
+\dontrun{data(lake_data_depth)
 modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature", site_id = "BARC", df = lake_data_depth)
-modeld_preds = predict_hetgp(het_gp_object = modeld, reference_date = "2023-09-01", depths = 1:2)
+modeld_preds = predict_hetgp(het_gp_object = modeld, reference_date = "2023-09-01")
 plot_hetGPpreds(predObject = modeld_preds)
+}
 
 }
 \references{

@@ -14,6 +14,9 @@
 #' sims = make_realizations(predObject = preds)
 #'
 make_realizations = function(predObject, nreals = 200){
+  if (predObject$covar_name != "DOY"){
+    stop("make_realizations is currently only supported for models in which DOY is the only covariate")
+  }
   preds4plotting = predObject$preds4plotting
   mu = predObject$preds4plotting$Mean
   sigma = predObject$covmat
@@ -58,7 +61,7 @@ make_realizations = function(predObject, nreals = 200){
 #' locs <- cbind(locs[,1],locs[,2])
 #' covmat<- covpow(locs)
 #' z <- rmultnorm(1,rep(0,20*20), covmat)
-rmultnorm <- function(n, mu, sigma){
+rmultnorm = function(n, mu, sigma){
   p <- length(mu)
   z <- matrix(rnorm(n * p),nrow = n)
   svdsig <- svd(sigma)

@@ -4,11 +4,13 @@
 #' @param save_covmat boolean: should the predictive covariance matrix between prediction locations be saved?
 #' @param reference_datetime character or Date, POSIXt class date formatted as YYYY-MM-DD
 #' @param max_horizon forecast horizon in days (default is 35)
-#' @param depths depths at which predictions are desired (numeric vector >= 0) (default is 1:10)
 #' @param PI prediction interval coverage (numeric between 0 and 1) (default is 1:10)
-#' @return a list containing a data.frame in standard format containing forecasts; a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
-#' the original df used for fitting, a data.frame containing the mean, sd and upper and lower bounds (easier for plotting);
-#' a boolean value denoting whether depth was a covariate, and the name of the response variable
+#' @return a list containing a data.frame in standard format containing forecasts;
+#' a predictive covariance matrix if save_covmat = TRUE (otherwise this will be NULL),
+#' the original df used for fitting; preds4plotting, a data.frame containing the mean, sd and upper and lower bounds (easier for plotting);
+#' include_covar, a boolean value denoting whether another covariate was used, covar_name; covar_levels, the values of the additional covariate
+#' at which forecasts were made;covar_name, the name of the additional covariate (or DOY if DOY is the only covariate),
+#' and Yname, the name of the response variable
 #' @export
 #'
 #' @examples
@@ -16,10 +18,11 @@
 #' mod1 = fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
 #' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"))
 #'
-#' data(lake_data_depth)
+#' \dontrun{data(lake_data_depth)
 #' modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature", site_id = "BARC", df = lake_data_depth)
-#' modeld_preds = predict_hetgp(het_gp_object = modeld, reference_date = "2023-09-01", depths = 1:2)
+#' modeld_preds = predict_hetgp(het_gp_object = modeld, reference_date = "2023-09-01")
 #' plot_hetGPpreds(predObject = modeld_preds)
+#' }
 #'
 #' @references
 #' Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021).
@@ -27,7 +30,6 @@ predict_hetgp <- function(het_gp_object,
                           save_covmat = FALSE,
                           reference_datetime,
                           max_horizon = 35,
-                          depths = 1:10,
                           PI = .90){
 
   # check if reference date is in correct format
@@ -52,7 +54,7 @@ predict_hetgp <- function(het_gp_object,
 
   het_gp_fit = het_gp_object$het_gp_fit
   df = het_gp_object$df
-  include_depth = het_gp_object$include_depth
+  include_covar = het_gp_object$include_covar
   Y_resp = het_gp_object$variable
   Yname = het_gp_object$Yname
   pred_width = PI
@@ -65,7 +67,8 @@ predict_hetgp <- function(het_gp_object,
   doys = as.integer(format(date_times, "%j"))
 
   # DOY is only covariate
-  if (!include_depth){
+  if (!include_covar){
+    covar_name = het_gp_object$covar_name
     Xnew <- matrix(1:365)
     Xnew_doy = matrix(doys)
 
@@ -101,22 +104,17 @@ predict_hetgp <- function(het_gp_object,
     mypreds$Lower <- qnorm(alpha1, mypreds$Mean, mypreds$sd)
     mypreds$Upper <- qnorm(alpha2, mypreds$Mean, mypreds$sd)
     mylist = list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
-                  include_depth = include_depth, Yname = Yname, pred_width = pred_width)
+                  include_covar = include_covar, Yname = Yname, pred_width = pred_width,
+                  covar_name = covar_name)
     class(mylist) = "hetGPpreds"
     return(mylist)
-    # DOY and depth are covariates
+    # DOY and other covariate are covariates
   }else{
-    # check if depths argument is correct (must be numeric and greater than 0)
-    if (!setequal(1:10, depths)){
-      if (!is.numeric(depths)){
-        stop("depths must be a numeric vector >= 0")
-      }
-      if (sum(depths < 0) >= 1 ){
-        stop("depths must be >= 0")
-      }
-    }
-
-    Xnewdf = data.frame(DOY=rep(1:365, length(depths)), depth = rep(depths, each = 365))
+    covar_name = het_gp_object$covar_name
+    covar_levels = het_gp_object$covar_levels
+    Xnewdf = data.frame(DOY=rep(1:365, length(covar_levels)), temp_name = rep(covar_levels, each = 365))
+    idx = which(colnames(Xnewdf) == "temp_name")
+    colnames(Xnewdf)[idx] = covar_name
     Xnew = as.matrix(Xnewdf)
 
     Xnew_doy = as.matrix(Xnewdf[Xnewdf$DOY %in% doys, ])
@@ -132,9 +130,11 @@ predict_hetgp <- function(het_gp_object,
     }
 
     pred_df = data.frame(Mean = preds$mean, sd = sqrt(preds$sd2 + preds$nugs),
-                         DOY=rep(1:365, length(depths)),
-                         depth = rep(depths, each = 365))
+                         DOY=rep(1:365, length(covar_levels)),
+                         temp_name = rep(covar_levels, each = 365))
 
+    idx = which(colnames(pred_df) == "temp_name")
+    colnames(pred_df)[idx] = covar_name
 
     mypreds = pred_df[pred_df$DOY %in% doys, ]
 
@@ -146,24 +146,29 @@ predict_hetgp <- function(het_gp_object,
 
     final_mean_df = data.frame(reference_datetime = reference_datetime, datetime = mypreds$datetime,
                                prediction = mean_preds, model_id = model_id, family = family,
-                               parameter = "mu", variable = variable, depth = mypreds$depth)
+                               parameter = "mu", variable = variable, temp_name = mypreds$depth)
 
     final_sd_df = data.frame(reference_datetime = reference_datetime, datetime = mypreds$datetime,
                              prediction = sd_preds, model_id = model_id, family = family,
-                             parameter = "sd", variable = variable, depth = mypreds$depth)
+                             parameter = "sd", variable = variable, temp_name = mypreds$depth)
 
     finaldf = rbind(final_mean_df, final_sd_df)
+
+    idx = which(colnames(finaldf) == "temp_name")
+    colnames(finaldf)[idx] = covar_name
 
     df$DOY = NULL
 
     mypreds$Lower = qnorm(alpha1, mypreds$Mean, mypreds$sd)
     mypreds$Upper = qnorm(alpha2, mypreds$Mean, mypreds$sd)
     mylist = list(pred_df = finaldf, covmat = covmat, df = df, preds4plotting = mypreds,
-                  include_depth = include_depth, Yname = Yname, pred_width = pred_width, depths = depths)
+                  include_covar = include_covar, Yname = Yname, pred_width = pred_width,
+                  covar_levels = covar_levels, covar_name = covar_name)
     class(mylist) = "hetGPpreds"
     return(mylist)
   }
 }
+
 
 #' Plot predictive mean and prediction intervals of a forecast
 #'
@@ -176,14 +181,13 @@ predict_hetgp <- function(het_gp_object,
 #' mod1 =  fit_hetgp(X = "DOY", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth)
 #' preds = predict_hetgp(het_gp_object = mod1, reference_datetime = "2023-09-01")
 #' plot_hetGPpreds(predObject=preds)
-#'
 plot_hetGPpreds = function(predObject){
-  include_depth = predObject$include_depth
+  include_covar = predObject$include_covar
 
   Yname = predObject$Yname
   percent_width = predObject$pred_width * 100
 
-  if(!include_depth){
+  if(!include_covar){
     plotdf = predObject$preds4plotting
     ymin = min(plotdf$Lower)
     ymax = max(plotdf$Upper)
@@ -198,21 +202,23 @@ plot_hetGPpreds = function(predObject){
     ymin = min(plotdf$Lower)
     ymax = max(plotdf$Upper)
 
-    depths = predObject$depths
-    depthL = length(depths)
-    numCols = ceiling(depthL / 2)
+    covar_name = predObject$covar_name
+
+    covar_levels = predObject$covar_levels
+    covar_L = length(covar_levels)
+    numCols = ceiling(covar_L / 2)
     if (numCols == 1){
       par(mfrow = c(1,2))
     }else{
       par(mfrow = c(2, numCols))
     }
-    for (i in 1:length(depths)){
-      mydepth = depths[i]
-      temp = plotdf[plotdf$depth == mydepth, ]
-      x=temp$DOY
+    for (i in 1:length(covar_levels)){
+      my_value = covar_levels[i]
+      temp = plotdf[plotdf[[covar_name]] == my_value, ]
+      x = temp$DOY
       plot(x, temp$Mean, xlab = "DOY",
            ylab = Yname, type = "l", ylim = c(ymin, ymax),
-           main = paste("Depth", mydepth))
+           main = paste(covar_name, my_value))
       lines(x, temp$Upper, lty = 2)
       lines(x, temp$Lower, lty = 2)
       if (i == 1){

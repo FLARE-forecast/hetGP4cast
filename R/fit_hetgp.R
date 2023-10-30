@@ -112,7 +112,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE, co
 
     accepted_Xs = c(Xvals, "DOY")
     if (anyNA( match(X , accepted_Xs))){
-     stop("you entered a name for X that does not exist in df")
+     stop("you entered a name for an input X that does not exist in df")
     }
 
     # covariates must be of class numeric--no factors/characters
@@ -166,7 +166,7 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE, co
     }
     if (length(X) == length(accepted_Xs)){
       if(anyNA(match(X, accepted_Xs))){
-        stop("Inputs, X, must be equal to : ", paste(accepted_Xs, collapse = ' '))
+        stop("Inputs, X, must be include : ", paste(accepted_Xs, collapse = ' '))
       }
     }else{
       if ( anyNA(match(X, accepted_Xs))){

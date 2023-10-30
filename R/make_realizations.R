@@ -1,4 +1,4 @@
-#' make_realizations
+#' Generate realizations from the posterior predictive distribution
 #'
 #' @param predObject the object output from predict_hetgp()
 #' @param nreals number of realizations to generate (default is 200)
@@ -38,7 +38,7 @@ make_realizations = function(predObject, nreals = 200){
 
 }
 
-#' rmultnorm
+#' Sample from a multivariate normal distribution
 #'
 #' @param n number of realizations
 #' @param mu mean vector of length m

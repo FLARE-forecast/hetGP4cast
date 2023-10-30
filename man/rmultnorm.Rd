@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_realizations.R
 \name{rmultnorm}
 \alias{rmultnorm}
-\title{rmultnorm}
+\title{Sample from a multivariate normal distribution}
 \usage{
 rmultnorm(n, mu, sigma)
 }
@@ -17,7 +17,7 @@ rmultnorm(n, mu, sigma)
 a matrix of dimension n x m
 }
 \description{
-rmultnorm
+Sample from a multivariate normal distribution
 }
 \examples{
 covpow <- function(locs,pow=2,scale=5){

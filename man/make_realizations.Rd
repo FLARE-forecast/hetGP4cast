@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_realizations.R
 \name{make_realizations}
 \alias{make_realizations}
-\title{make_realizations}
+\title{Generate realizations from the posterior predictive distribution}
 \usage{
 make_realizations(predObject, nreals = 200)
 }
@@ -15,12 +15,13 @@ make_realizations(predObject, nreals = 200)
 a list containing a data.frame of realizations and a matrix containing realizations
 }
 \description{
-make_realizations
+Generate realizations from the posterior predictive distribution
 }
 \examples{
 data(sample_lake_data_1mdepth)
 mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
-preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"), save_covmat=TRUE)
+preds <- predict_hetgp(het_gp_object = mod1, reference_datetime =
+ as.Date("2022-10-05"), save_covmat=TRUE)
 
 sims = make_realizations(predObject = preds)
 

@@ -5,7 +5,7 @@ testthat::test_that("errors", {
 
   testthat::expect_error(
     fit_hetgp(X = "D", Y = "temperature", site_id = "FCR", df = sample_lake_data_1mdepth),
-    "Inputs, X, must be equal to : DOY"
+    "Inputs, X, must be include : DOY"
   )
 
   testthat::expect_error(

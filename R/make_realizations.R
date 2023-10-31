@@ -5,11 +5,12 @@
 #'
 #' @return a list containing a data.frame of realizations and a matrix containing realizations
 #' @export
-#'
+#' @importFrom stats predict qnorm quantile rnorm predict
 #' @examples
 #' data(sample_lake_data_1mdepth)
 #' mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
-#' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime = as.Date("2022-10-05"), save_covmat=TRUE)
+#' preds <- predict_hetgp(het_gp_object = mod1, reference_datetime =
+#'  as.Date("2022-10-05"), save_covmat=TRUE)
 #'
 #' sims = make_realizations(predObject = preds)
 #'

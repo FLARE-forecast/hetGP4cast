@@ -175,6 +175,7 @@ predict_hetgp <- function(het_gp_object,
 #' @param predObject an object of class "hetGPpreds"
 #' @return it makes a plot
 #' @export
+#' @importFrom graphics lines legend par
 #'
 #' @examples
 #' data(sample_lake_data_1mdepth)

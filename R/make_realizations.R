@@ -33,8 +33,9 @@ make_realizations = function(predObject, nreals = 200){
   horizons = nrow(pred_df)
   bigdf = Reduce(function(.x, .y) rbind(.x, pred_df), seq_len(nreals -1), init = pred_df)
   bigdf$prediction = NULL
-  tempdf = data.frame(prediction = temp, number = rep(1:nreals, each = horizons))
+  tempdf = data.frame(prediction = temp, sample_number = rep(1:nreals, each = horizons))
   bigdf = cbind(bigdf, tempdf)
+  bigdf$family = "sample"
   return(list(realizations = reals, pred_df_reals = bigdf))
 
 }

@@ -224,9 +224,15 @@ fit_hetgp <- function(X, Y, site_id, df, covtype = "Gaussian", silent = TRUE, co
 
   # extract X's
   Xmat = as.matrix(df[, X])
+  if (anyNA(Xmat)){
+    stop("NAs are not allowed for inputs X")
+  }
 
   # get Y
   Y_resp = df$observation
+  if (anyNA(Y_resp)){
+    stop("NAs are not allowed for the response variable Y")
+  }
 
 
   accepted_covtypes = c("Gaussian", "Matern5_2", "Matern3_2")

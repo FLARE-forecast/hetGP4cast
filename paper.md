@@ -44,4 +44,7 @@ We acknowledge the Ecological Forecasting Project team (especially Mary Lofton, 
 @article{binois2021hetgp,
   title={hetgp: Heteroskedastic Gaussian process modeling and sequential design in R},
   author={Binois, Micka{\"e}l and Gramacy, Robert B},
+  volue={98},
+  pages={1--44},
   year={2021}
+}

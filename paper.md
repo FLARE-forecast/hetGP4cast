@@ -6,10 +6,6 @@ tags:
 - ecology
 - Gaussian process
 - heteroscedasticity
-date: "09 January 2023" 
-output:
-  html_document:
-    df_print: paged
 authors:
 - name: Maike Holthuijzen
   orcid: "0000-0002-6870-3314"
@@ -30,6 +26,8 @@ aas-journal: NA
 affiliations:
 - name: Virginia Tech, USA
   index: 1
+date: 10 January 2024
+bibliography: references.bib
 ---
 
 # Summary

@@ -6,7 +6,7 @@ tags:
 - ecology
 - Gaussian process
 - heteroscedasticity
-date: "08 December 2023" 
+date: "09 January 2023" 
 output:
   html_document:
     df_print: paged
@@ -56,6 +56,7 @@ In this section, we use the `hetGP4cast` package to fit hetGPs to sample data an
 
 The sample dataset used here contains lake temperatures for several reservoirs located in Southwest Virginia, USA.
 ```{r}
+devtools::install_github("maikeh7/hetGP4cast")
 library(hetGP4cast)
 
 # read data

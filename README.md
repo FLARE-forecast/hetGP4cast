@@ -9,7 +9,7 @@ To download this package use: devtools::install_github("maikeh7/hetGP4cast")
 
 View the vignette here: https://rpubs.com/dutchie/vignette
 
-Raw vignette files are located here: https://zenodo.org/records/10064756
+Get the raw vignette file here: https://zenodo.org/records/10064756
 
 ## References
 

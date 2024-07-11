@@ -2,13 +2,55 @@
 % Please edit documentation in R/fit_hetgp.R
 \name{fit_hetgp}
 \alias{fit_hetgp}
-\title{Title}
+\title{Fit a heteroscedastic Gaussian process model}
 \usage{
-fit_hetgp(df, reference_datetime, horizon)
+fit_hetgp(
+  X,
+  Y,
+  site_id,
+  df,
+  covtype = "Gaussian",
+  silent = TRUE,
+  covar_levels = NULL
+)
 }
 \arguments{
-\item{horizon}{}
+\item{X}{X name(s) of covariates for model fitting (string);
+Accepted values are: "DOY" and the name of a valid covariate found in df. Covariates other than "DOY"
+must be numeric. Categorical variables are currently not supported.}
+
+\item{Y}{Y name of response (string); accepted values are one of unique(df$variable)}
+
+\item{site_id}{name of site; accepted values are one or more of unique(df$site_id)}
+
+\item{df}{data.frame in standard format, see \href{here}{https://projects.ecoforecast.org/tern4cast/instructions.html#target-data-calculation}}
+
+\item{covtype}{type of covariance function to use; can be one of
+"Gaussian", "Matern3_2" or "Matern5_2"; for more information, see ?hetGP::mleHetGP()}
+
+\item{silent}{if TRUE, more output will be printed to the console}
+
+\item{covar_levels}{a numeric vector specifying the values of the covariate other than DOY (if applicable)
+at which forecasts should be made. If not specified, covar_levels will be set to unique values of the covariate if there
+are less than 10; otherwise 10 levels will be specified at the following quantiles: 0,11,22,33,44,55,66,77,88, 100}
+}
+\value{
+a list containing the hetGP fit object, the original df,
+a boolean to denote whether not depth was used as an input; covar_name, the name of the covariate other than DOY;
+the vector of observations; covar_levels, a vector containing values of the covariate on which predictions should be
+based; and Yname, the name of the response variable
 }
 \description{
-Title
+Fit a heteroscedastic Gaussian process model
+}
+\examples{
+data(sample_lake_data_1mdepth)
+mod1 =  fit_hetgp(X = "DOY", Y = "temperature",site_id = "FCR", df = sample_lake_data_1mdepth)
+
+\dontrun{data(lake_data_depth)
+modeld = fit_hetgp(X = c("DOY","depth"), Y = "temperature", site_id = "BARC", df = lake_data_depth)
+}
+}
+\references{
+Binois, Mickael, and Robert B. Gramacy. "hetgp: Heteroskedastic Gaussian process modeling and sequential design in R." (2021)
 }

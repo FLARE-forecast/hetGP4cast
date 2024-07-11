@@ -1,13 +1,26 @@
-Package: hetGP4cast
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Package: hetGP4cast 
+Version: 1.0.0
+Date: 2023-07-21
+Title: Fitting climatological models via heteroscedastic Gaussian process models  
+Authors@R: c(person("Maike", "Holthuijzen", role = c("aut", "cre"),
+                     email = "mholthuijzen@alumni.uidaho.edu"))
+Author: Maike Holthuijzen [aut, cre], Quinn Thomas [aut]
+Maintainer: Maike Holthuijzen <mholthuijzen@alumni.uidaho.edu>
+Description: Fit climatological models with up to two inputs via a heteroscedastic Gaussian process model,
+    specifically for use in the NEON forecasting challenge. Also included are functions for making predictions from 
+    a fitted model, plotting, and generating realizations from the posterior predictive distribution. 
+    This package is a wrapper for the 'hetGP' package by Gramacy and Binois (2021) <doi:10.18637/jss.v098.i13>.
+Depends: R (>= 2.10)
+License: CC BY 4.0
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
+LazyData: true
 RoxygenNote: 7.2.3
-Imports: hetGP
+Imports: lubridate, hetGP, stats, graphics
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    readr,
+    ggplot2
+Config/testthat/edition: 3
+VignetteBuilder: knitr
